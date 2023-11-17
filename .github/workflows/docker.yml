@@ -1,0 +1,39 @@
+name: Build and push images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'dev'
+      - 'main'
+
+defaults:
+  run:
+    shell: 'bash -Eeuo pipefail {0}'
+
+jobs:
+  main:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        otp-version: ['24', '25']
+        fdb-version: ['7.1.43']
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker login
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:erlang-${{ matrix.otp-version }}-fdb-${{ matrix.fdb-version }}
+          file: .devcontainer/Dockerfile
+          context: .devcontainer
+          build-args: |
+            FDB_VERSION=${{ matrix.fdb-version }}
+            ERLANG_VERSION=${{ matrix.otp-version }}

@@ -25,7 +25,7 @@ jobs:
       ImageOS: ubuntu20
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
           submodules: recursive
@@ -54,10 +54,8 @@ jobs:
   os_fdb_matrix:
     strategy:
       matrix:
-        # erlef/setup-beam action does not support macos yet
-        os: [ubuntu-latest]
         fdb-version: ['7.1.43']
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
       # This profile uses the FDB server started in the "Install FoundationDB" step
@@ -71,30 +69,21 @@ jobs:
       ImageOS: ubuntu20
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
           submodules: recursive
       - name: Setup Erlang
         uses: ./.github/actions/setup-beam
         with:
-          otp-version: '24'
+          otp-version: '25'
           rebar3-version: '3.17'
-          ImageOS: ubuntu20
-      - name: Install FoundationDB (Ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Install FoundationDB
         run: |
           wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
           wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
           sudo dpkg -i foundationdb-clients_${FDB_VERSION}-1_amd64.deb
           sudo dpkg -i foundationdb-server_${FDB_VERSION}-1_amd64.deb
-      - name: Install FoundationDB (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          Set-PSDebug -Trace 1
-          Invoke-WebRequest -Uri https://github.com/apple/foundationdb/releases/download/$env:FDB_VERSION/foundationdb-$env:FDB_VERSION-x64.msi -OutFile foundationdb-$env:FDB_VERSION-x64.msi
-          Start-Process -Wait -FilePath msiexec -ArgumentList /i, foundationdb-$env:FDB_VERSION-x64.msi, /passive
-          echo "C:\Program Files\foundationdb\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Compile
         run: rebar3 compile
       - name: EUnit tests
@@ -117,40 +106,22 @@ jobs:
           - test-name: scripted
             api-version: 710
     container:
-      image: debian:testing-slim
-    env:
-      # This profile just ensures we use the FDB server in the service container
-      REBAR_PROFILE: devcontainer
-      FDB_VERSION: 7.1.43
+      image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.1.43
+    services:
+      foundationdb:
+        image: foundationdb/foundationdb:7.1.43
     steps:
-      - name: Initialize Container
-        run: |
-          mkdir -p /opt/fdb
-          cd /opt/fdb
-          mkdir test
-          apt -y update
-          apt -y install python3
-          apt -y install python3.11-venv
-          apt -y install wget
-          apt -y install adduser
-          apt -y --no-install-recommends install erlang
-          apt -y --no-install-recommends install rebar3
-          apt -y --no-install-recommends install gcc
-          apt -y --no-install-recommends install libc6-dev
-          python3 -m venv py
-          ./py/bin/pip install -Iv foundationdb==7.1.43
-      - name: Install FoundationDB
-        run: |
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
-          dpkg -i foundationdb-clients_${FDB_VERSION}-1_amd64.deb
-          dpkg -i foundationdb-server_${FDB_VERSION}-1_amd64.deb
+      - name: Create FDB cluster file
+        env:
+          # This needs to match the name of the service above so the script can do
+          # a DNS lookup to write down the coordinator IP in the fdb.cluster file
+          FDB_COORDINATOR: foundationdb
+        shell: bash
+        run: bash /usr/local/bin/create_cluster_file.bash
       - name: Initialize FDB database
-        run: |
-          fdbcli --exec "configure storage_migration_type=aggressive"
-          fdbcli --exec "configure ssd"
+        run: fdbcli --exec "configure new single ssd"
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Compile erlfdb
@@ -164,8 +135,9 @@ jobs:
           COVER_ENABLED: true
           ERL_LIBS: _build/devcontainer+test/lib/erlfdb/
         run: |
-          cp $GITHUB_WORKSPACE/test/tester.es /opt/fdb/test/tester.es
-          /opt/fdb/py/bin/python $GITHUB_WORKSPACE/.ci/bindingtester/bindingtester.py erlang \
+          mkdir -p /usr/src/erlfdb/test/
+          ln -s $GITHUB_WORKSPACE/test/tester.es /usr/src/erlfdb/test/tester.es
+          /usr/src/foundationdb/bindings/bindingtester/bindingtester.py erlang \
               --test-name $TEST_NAME \
               --api-version $API_VERSION \
               --instruction-prefix $TEST_NAME \
