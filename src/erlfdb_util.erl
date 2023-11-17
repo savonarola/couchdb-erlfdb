@@ -107,7 +107,7 @@ init_test_cluster_int(Options) ->
     ClusterName = ?MODULE:get(Options, cluster_name, <<"erlfdbtest">>),
     ClusterId = ?MODULE:get(Options, cluster_id, <<"erlfdbtest">>),
 
-    DefaultClusterFile = filename:join(Dir, <<"erlfdb.cluster">>),
+    DefaultClusterFile = <<"/etc/foundationdb/fdb.cluster">>,
     ClusterFile = ?MODULE:get(Options, cluster_file, DefaultClusterFile),
 
     write_cluster_file(ClusterFile, ClusterName, ClusterId, IpAddr, Port),
