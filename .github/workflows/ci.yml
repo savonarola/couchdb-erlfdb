@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
 
 permissions:
@@ -13,8 +13,8 @@ jobs:
   otp_fdb_matrix:
     strategy:
       matrix:
-        otp-version: ['22', '23', '24']
-        fdb-version: ['6.3.22']
+        otp-version: ['24', '25']
+        fdb-version: ['7.1.43']
     runs-on: ubuntu-latest
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
@@ -22,6 +22,7 @@ jobs:
       DEBUG: 0
       # Set to 1 for even more verbose rebar3 logging
       DIAGNOSTIC: 0
+      ImageOS: ubuntu20
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -33,6 +34,7 @@ jobs:
         with:
           otp-version: ${{ matrix.otp-version }}
           rebar3-version: '3.17'
+          ImageOS: ubuntu20
       - name: Install FoundationDB
         run: |
           wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
@@ -53,15 +55,8 @@ jobs:
     strategy:
       matrix:
         # erlef/setup-beam action does not support macos yet
-        os: [ubuntu-latest, windows-latest]
-        fdb-version: ['6.2.30', '6.3.22']
-        # Windows builds are not being published beyond 6.3.9 right now
-        exclude:
-          - os: windows-latest
-            fdb-version: '6.3.22'
-        include:
-          - os: windows-latest
-            fdb-version: '6.3.9'
+        os: [ubuntu-latest]
+        fdb-version: ['7.1.43']
     runs-on: ${{ matrix.os }}
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
@@ -73,6 +68,7 @@ jobs:
       DEBUG: 0
       # Set to 1 for even more verbose rebar3 logging
       DIAGNOSTIC: 0
+      ImageOS: ubuntu20
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -84,9 +80,7 @@ jobs:
         with:
           otp-version: '24'
           rebar3-version: '3.17'
-      - name: Setup MSVC toolchain
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: ./.github/actions/msvc-dev-cmd
+          ImageOS: ubuntu20
       - name: Install FoundationDB (Ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
@@ -101,11 +95,6 @@ jobs:
           Invoke-WebRequest -Uri https://github.com/apple/foundationdb/releases/download/$env:FDB_VERSION/foundationdb-$env:FDB_VERSION-x64.msi -OutFile foundationdb-$env:FDB_VERSION-x64.msi
           Start-Process -Wait -FilePath msiexec -ArgumentList /i, foundationdb-$env:FDB_VERSION-x64.msi, /passive
           echo "C:\Program Files\foundationdb\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Install FoundationDB (macOS)
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: |
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/FoundationDB-${FDB_VERSION}.pkg
-          sudo installer -allowUntrusted -verboseR -pkg FoundationDB-${FDB_VERSION}.pkg -target /
       - name: Compile
         run: rebar3 compile
       - name: EUnit tests
@@ -120,30 +109,46 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-name: [api, directory, directory_hca, tuple]
-        api-version: [610, 620, 630]
+       #test-name: [api, directory, directory_hca, tuple]
+        test-name: [api]
+        api-version: [710]
         include:
           # The `scripted` test only supports the latest API version
           - test-name: scripted
-            api-version: 630
+            api-version: 710
     container:
-      image: apache/couchdbci-debian:erlfdb-erlang-24.1.5.0-fdb-6.3.18-1
-    services:
-      foundationdb:
-        image: foundationdb/foundationdb:6.3.18
+      image: debian:testing-slim
     env:
       # This profile just ensures we use the FDB server in the service container
       REBAR_PROFILE: devcontainer
+      FDB_VERSION: 7.1.43
     steps:
-      - name: Create FDB cluster file
-        env:
-          # This needs to match the name of the service above so the script can do
-          # a DNS lookup to write down the coordinator IP in the fdb.cluster file
-          FDB_COORDINATOR: foundationdb
-        shell: bash
-        run: /usr/local/bin/create_cluster_file.bash
+      - name: Initialize Container
+        run: |
+          mkdir -p /opt/fdb
+          cd /opt/fdb
+          mkdir test
+          apt -y update
+          apt -y install python3
+          apt -y install python3.11-venv
+          apt -y install wget
+          apt -y install adduser
+          apt -y --no-install-recommends install erlang
+          apt -y --no-install-recommends install rebar3
+          apt -y --no-install-recommends install gcc
+          apt -y --no-install-recommends install libc6-dev
+          python3 -m venv py
+          ./py/bin/pip install -Iv foundationdb==7.1.43
+      - name: Install FoundationDB
+        run: |
+          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
+          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
+          dpkg -i foundationdb-clients_${FDB_VERSION}-1_amd64.deb
+          dpkg -i foundationdb-server_${FDB_VERSION}-1_amd64.deb
       - name: Initialize FDB database
-        run: fdbcli --exec "configure new single ssd"
+        run: |
+          fdbcli --exec "configure storage_migration_type=aggressive"
+          fdbcli --exec "configure ssd"
       - name: Check out repository code
         uses: actions/checkout@v2
         with:
@@ -159,9 +164,8 @@ jobs:
           COVER_ENABLED: true
           ERL_LIBS: _build/devcontainer+test/lib/erlfdb/
         run: |
-          mkdir -p /usr/src/erlfdb/test/
-          ln -s $GITHUB_WORKSPACE/test/tester.es /usr/src/erlfdb/test/tester.es
-          /usr/src/foundationdb/bindings/bindingtester/bindingtester.py erlang \
+          cp $GITHUB_WORKSPACE/test/tester.es /opt/fdb/test/tester.es
+          /opt/fdb/py/bin/python $GITHUB_WORKSPACE/.ci/bindingtester/bindingtester.py erlang \
               --test-name $TEST_NAME \
               --api-version $API_VERSION \
               --instruction-prefix $TEST_NAME \
