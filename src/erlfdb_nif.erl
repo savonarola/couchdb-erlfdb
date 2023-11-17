@@ -62,7 +62,7 @@
     error_predicate/2
 ]).
 
--define(DEFAULT_API_VERSION, 620).
+-define(DEFAULT_API_VERSION, 710).
 
 -type error() :: {erlfdb_error, Code :: integer()}.
 -type future() :: {erlfdb_future, reference(), reference()}.
@@ -87,10 +87,13 @@
     local_address
     | cluster_file
     | trace_enable
-    | trace_format
     | trace_roll_size
     | trace_max_logs_size
     | trace_log_group
+    | trace_format
+    | trace_clock_source
+    | trace_file_identifier
+    | trace_partial_file_suffix
     | knob
     | tls_plugin
     | tls_cert_bytes
@@ -110,10 +113,16 @@
     | external_client_library
     | external_client_directory
     | disable_local_client
+    | client_threads_per_version
+    | retain_client_library_copies
     | disable_client_statistics_logging
     | enable_slow_task_profiling
-    % API version 630+
-    | enable_run_loop_profiling.
+    | enable_run_loop_profiling
+    | buggify_enable
+    | buggify_disable
+    | buggify_section_activated_probability
+    | buggify_section_fired_probability
+    | distributed_client_tracer.
 
 -type database_option() ::
     location_cache_size
@@ -485,12 +494,13 @@ select_api_version(Version) when is_integer(Version), Version > 0 ->
 -spec network_set_option(Option :: network_option(), Value :: option_value()) ->
     ok | error().
 network_set_option(Name, Value) ->
+    Option = erlfdb_nif_option:to_network_option(Name),
     BinValue =
         case Value of
             B when is_binary(B) -> B;
             I when is_integer(I) -> <<I:8/little-unsigned-integer-unit:8>>
         end,
-    erlfdb_network_set_option(Name, BinValue).
+    erlfdb_network_set_option(Option, BinValue).
 
 % Sentinel Check
 erlfdb_can_initialize() -> ?NOT_LOADED.

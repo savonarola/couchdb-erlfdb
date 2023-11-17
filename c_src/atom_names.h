@@ -35,38 +35,6 @@ ATOM_MAP(invalid_future_type);
 
 ATOM_MAP(writes_not_allowed);
 
-// Network Options
-ATOM_MAP(local_address);
-ATOM_MAP(cluster_file);
-ATOM_MAP(trace_enable);
-ATOM_MAP(trace_format);
-ATOM_MAP(trace_roll_size);
-ATOM_MAP(trace_max_logs_size);
-ATOM_MAP(trace_log_group);
-ATOM_MAP(knob);
-ATOM_MAP(tls_plugin);
-ATOM_MAP(tls_cert_bytes);
-ATOM_MAP(tls_cert_path);
-ATOM_MAP(tls_key_bytes);
-ATOM_MAP(tls_key_path);
-ATOM_MAP(tls_verify_peers);
-ATOM_MAP(client_buggify_enable);
-ATOM_MAP(client_buggify_disable);
-ATOM_MAP(client_buggify_section_activated_probability);
-ATOM_MAP(client_buggify_section_fired_probability);
-ATOM_MAP(tls_ca_bytes);
-ATOM_MAP(tls_ca_path);
-ATOM_MAP(tls_password);
-ATOM_MAP(disable_multi_version_client_api);
-ATOM_MAP(callbacks_on_external_threads);
-ATOM_MAP(external_client_library);
-ATOM_MAP(external_client_directory);
-ATOM_MAP(disable_local_client);
-ATOM_MAP(disable_client_statistics_logging);
-ATOM_MAP(enable_slow_task_profiling);
-ATOM_MAP(enable_run_loop_profiling);
-
-
 // Database Options
 ATOM_MAP(location_cache_size);
 ATOM_MAP(max_watches);

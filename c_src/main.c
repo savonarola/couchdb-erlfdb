@@ -441,6 +441,7 @@ erlfdb_network_set_option(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     FDBNetworkOption option;
     ErlNifBinary value;
     fdb_error_t err;
+    int option_value;
 
     if(st->lib_state != ErlFDB_API_SELECTED) {
         return enif_make_badarg(env);
@@ -450,70 +451,12 @@ erlfdb_network_set_option(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(IS_ATOM(argv[0], local_address)) {
-        option = FDB_NET_OPTION_LOCAL_ADDRESS;
-    } else if(IS_ATOM(argv[0], cluster_file)) {
-        option = FDB_NET_OPTION_CLUSTER_FILE;
-    } else if(IS_ATOM(argv[0], trace_enable)) {
-        option = FDB_NET_OPTION_TRACE_ENABLE;
-    } else if(IS_ATOM(argv[0], trace_format)) {
-        option = FDB_NET_OPTION_TRACE_FORMAT;
-    } else if(IS_ATOM(argv[0], trace_roll_size)) {
-        option = FDB_NET_OPTION_TRACE_ROLL_SIZE;
-    } else if(IS_ATOM(argv[0], trace_max_logs_size)) {
-        option = FDB_NET_OPTION_TRACE_MAX_LOGS_SIZE;
-    } else if(IS_ATOM(argv[0], trace_log_group)) {
-        option = FDB_NET_OPTION_TRACE_LOG_GROUP;
-    } else if(IS_ATOM(argv[0], knob)) {
-        option = FDB_NET_OPTION_KNOB;
-    } else if(IS_ATOM(argv[0], tls_plugin)) {
-        option = FDB_NET_OPTION_TLS_PLUGIN;
-    } else if(IS_ATOM(argv[0], tls_cert_bytes)) {
-        option = FDB_NET_OPTION_TLS_CERT_BYTES;
-    } else if(IS_ATOM(argv[0], tls_cert_path)) {
-        option = FDB_NET_OPTION_TLS_CERT_PATH;
-    } else if(IS_ATOM(argv[0], tls_key_bytes)) {
-        option = FDB_NET_OPTION_TLS_KEY_BYTES;
-    } else if(IS_ATOM(argv[0], tls_key_path)) {
-        option = FDB_NET_OPTION_TLS_KEY_PATH;
-    } else if(IS_ATOM(argv[0], tls_verify_peers)) {
-        option = FDB_NET_OPTION_TLS_VERIFY_PEERS;
-    } else if(IS_ATOM(argv[0], client_buggify_enable)) {
-        option = FDB_NET_OPTION_CLIENT_BUGGIFY_ENABLE;
-    } else if(IS_ATOM(argv[0], client_buggify_disable)) {
-        option = FDB_NET_OPTION_CLIENT_BUGGIFY_DISABLE;
-    } else if(IS_ATOM(argv[0], client_buggify_section_activated_probability)) {
-        option = FDB_NET_OPTION_CLIENT_BUGGIFY_SECTION_ACTIVATED_PROBABILITY;
-    } else if(IS_ATOM(argv[0], client_buggify_section_fired_probability)) {
-        option = FDB_NET_OPTION_CLIENT_BUGGIFY_SECTION_FIRED_PROBABILITY;
-    } else if(IS_ATOM(argv[0], tls_ca_bytes)) {
-        option = FDB_NET_OPTION_TLS_CA_BYTES;
-    } else if(IS_ATOM(argv[0], tls_password)) {
-        option = FDB_NET_OPTION_TLS_PASSWORD;
-    } else if(IS_ATOM(argv[0], disable_multi_version_client_api)) {
-        option = FDB_NET_OPTION_DISABLE_MULTI_VERSION_CLIENT_API;
-    } else if(IS_ATOM(argv[0], callbacks_on_external_threads)) {
-        option = FDB_NET_OPTION_CALLBACKS_ON_EXTERNAL_THREADS;
-    } else if(IS_ATOM(argv[0], external_client_library)) {
-        option = FDB_NET_OPTION_EXTERNAL_CLIENT_LIBRARY;
-    } else if(IS_ATOM(argv[0], external_client_directory)) {
-        option = FDB_NET_OPTION_EXTERNAL_CLIENT_DIRECTORY;
-    } else if(IS_ATOM(argv[0], disable_local_client)) {
-        option = FDB_NET_OPTION_DISABLE_LOCAL_CLIENT;
-    } else if(IS_ATOM(argv[0], disable_client_statistics_logging)) {
-        option = FDB_NET_OPTION_DISABLE_CLIENT_STATISTICS_LOGGING;
-    } else if(IS_ATOM(argv[0], enable_slow_task_profiling)) {
-        option = FDB_NET_OPTION_ENABLE_SLOW_TASK_PROFILING;
-    }
-    #if FDB_API_VERSION >= 630
-    else if(IS_ATOM(argv[0], enable_run_loop_profiling)) {
-        option = FDB_NET_OPTION_ENABLE_RUN_LOOP_PROFILING;
-    }
-    #endif
-    else {
+    if(!enif_get_int(env, argv[0], &option_value)) {
         return enif_make_badarg(env);
     }
 
+    // this cast is unsafe, but we guarantee it in the Erlang layer
+    option = option_value;
     if(!enif_inspect_binary(env, argv[1], &value)) {
         return enif_make_badarg(env);
     }
