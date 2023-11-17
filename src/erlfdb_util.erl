@@ -179,6 +179,7 @@ find_fdbserver_bin(Options) ->
         case ?MODULE:get(Options, fdbserver_bin) of
             undefined ->
                 [
+                    <<"/usr/src/foundationdb/fdbserver">>,
                     <<"/usr/sbin/fdbserver">>,
                     <<"/usr/local/bin/fdbserver">>,
                     <<"/usr/local/sbin/fdbserver">>,
