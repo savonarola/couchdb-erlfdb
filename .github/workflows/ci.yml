@@ -101,10 +101,6 @@ jobs:
        #test-name: [api, directory, directory_hca, tuple]
         test-name: [api]
         api-version: [710]
-        include:
-          # The `scripted` test only supports the latest API version
-          - test-name: scripted
-            api-version: 710
     container:
       image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.1.43
     services:
