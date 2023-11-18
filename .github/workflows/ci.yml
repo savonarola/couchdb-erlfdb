@@ -106,6 +106,12 @@ jobs:
     services:
       foundationdb:
         image: foundationdb/foundationdb:7.1.43
+    env:
+      REBAR_PROFILE: devcontainer
+      # Set to 1 for verbose rebar3 logging
+      DEBUG: 0
+      # Set to 1 for even more verbose rebar3 logging
+      DIAGNOSTIC: 0
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
