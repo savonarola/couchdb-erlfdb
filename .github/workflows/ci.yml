@@ -9,8 +9,7 @@ permissions:
   contents: read
 
 jobs:
-
-  otp_fdb_matrix:
+  eunit:
     strategy:
       matrix:
         otp-version: ['24', '25']
@@ -22,19 +21,17 @@ jobs:
       DEBUG: 0
       # Set to 1 for even more verbose rebar3 logging
       DIAGNOSTIC: 0
-      ImageOS: ubuntu20
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          submodules: recursive
       - name: Setup Erlang
-        uses: ./.github/actions/setup-beam
+        uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp-version }}
           rebar3-version: '3.17'
-          ImageOS: ubuntu20
+          ImageOS: ubuntu22
       - name: Install FoundationDB
         run: |
           wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
@@ -45,54 +42,6 @@ jobs:
         run: rebar3 compile
       - name: EUnit tests
         run: rebar3 eunit
-      - name: Setup tmate session on job failure
-        uses: ./.github/actions/tmate
-        if: ${{ failure() }}
-        with:
-          limit-access-to-actor: true
-
-  os_fdb_matrix:
-    strategy:
-      matrix:
-        fdb-version: ['7.1.43']
-    runs-on: ubuntu-latest
-    env:
-      FDB_VERSION: ${{ matrix.fdb-version }}
-      # This profile uses the FDB server started in the "Install FoundationDB" step
-      # instead of starting another one (the code that manages the "local" FDB in the
-      # test suite is not designed with x-platform compatibility in mind)
-      REBAR_PROFILE: devcontainer
-      # Set to 1 for verbose rebar3 logging
-      DEBUG: 0
-      # Set to 1 for even more verbose rebar3 logging
-      DIAGNOSTIC: 0
-      ImageOS: ubuntu20
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          submodules: recursive
-      - name: Setup Erlang
-        uses: ./.github/actions/setup-beam
-        with:
-          otp-version: '25'
-          rebar3-version: '3.17'
-      - name: Install FoundationDB
-        run: |
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
-          sudo dpkg -i foundationdb-clients_${FDB_VERSION}-1_amd64.deb
-          sudo dpkg -i foundationdb-server_${FDB_VERSION}-1_amd64.deb
-      - name: Compile
-        run: rebar3 compile
-      - name: EUnit tests
-        run: rebar3 eunit
-      - name: Setup tmate session on job failure
-        uses: ./.github/actions/tmate
-        if: ${{ failure() }}
-        with:
-          limit-access-to-actor: true
 
   binding_tester:
     runs-on: ubuntu-latest
