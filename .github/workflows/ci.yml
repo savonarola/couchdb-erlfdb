@@ -47,8 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-       #test-name: [api, directory, directory_hca, tuple]
-        test-name: [api]
+        test-name: [api, directory, directory_hca, tuple]
         api-version: [710]
     container:
       image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.1.43

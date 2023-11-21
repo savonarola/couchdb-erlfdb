@@ -48,6 +48,8 @@
     get/2,
     get_ss/2,
 
+    get_range_split_points/4,
+
     get_key/2,
     get_key_ss/2,
 
@@ -295,6 +297,13 @@ get_ss(?IS_TX = Tx, Key) ->
     erlfdb_nif:transaction_get(Tx, Key, true);
 get_ss(?IS_SS = SS, Key) ->
     get_ss(?GET_TX(SS), Key).
+
+get_range_split_points(?IS_DB = Db, BeginKey, EndKey, ChunkSize) ->
+    transactional(Db, fun(Tx) ->
+        wait(get_range_split_points(Tx, BeginKey, EndKey, ChunkSize))
+    end);
+get_range_split_points(?IS_TX = Tx, BeginKey, EndKey, ChunkSize) ->
+    erlfdb_nif:transaction_get_range_split_points(Tx, BeginKey, EndKey, ChunkSize).
 
 get_key(?IS_DB = Db, Key) ->
     transactional(Db, fun(Tx) ->

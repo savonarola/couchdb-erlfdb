@@ -32,7 +32,8 @@ typedef enum _ErlFDBFutureType
     ErlFDB_FT_KEY,
     ErlFDB_FT_VALUE,
     ErlFDB_FT_STRING_ARRAY,
-    ErlFDB_FT_KEYVALUE_ARRAY
+    ErlFDB_FT_KEYVALUE_ARRAY,
+    ErlFDB_FT_KEY_ARRAY
 } ErlFDBFutureType;
 
 

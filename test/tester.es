@@ -779,6 +779,12 @@ execute(TxObj, #st{is_directory_op = true} = St, Op) ->
         NewSt
     end;
 
+execute(TxObj, St, <<"GET_RANGE_SPLIT_POINTS">>) ->
+    [Start, End, ChunkSize] = stack_pop(St, 3),
+    Result = erlfdb:get_range_split_points(TxObj, Start, End, ChunkSize),
+    stack_push_range(St, Result),
+    St;
+
 execute(_TxObj, _St, UnknownOp) ->
     erlang:error({unknown_op, UnknownOp}).
 
