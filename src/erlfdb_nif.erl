@@ -479,13 +479,15 @@ init() ->
                 end,
 
             lists:foreach(
-                fun(Option) ->
-                    case Option of
-                        Name when is_atom(Name) ->
-                            ok = network_set_option(Name, <<>>);
-                        {Name, Value} when is_atom(Name) ->
-                            ok = network_set_option(Name, Value)
-                    end
+                fun
+                    (Name) when is_atom(Name) ->
+                        ok = network_set_option(Name, <<>>);
+                    ({Name, true}) when is_atom(Name) ->
+                        ok = network_set_option(Name, <<>>);
+                    ({_Name, false}) ->
+                        ok;
+                    ({Name, Value}) when is_atom(Name) ->
+                        ok = network_set_option(Name, Value)
                 end,
                 Opts
             ),
