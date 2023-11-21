@@ -285,7 +285,9 @@ transaction_get({erlfdb_transaction, Tx}, Key, Snapshot) ->
 transaction_get_estimated_range_size({erlfdb_transaction, Tx}, StartKey, EndKey) ->
     erlfdb_transaction_get_estimated_range_size(Tx, StartKey, EndKey).
 
--spec transaction_get_range_split_points(transaction(), BeginKey :: binary(), EndKey :: binary(), ChunkSize :: non_neg_integer()) ->
+-spec transaction_get_range_split_points(
+    transaction(), BeginKey :: binary(), EndKey :: binary(), ChunkSize :: non_neg_integer()
+) ->
     future().
 transaction_get_range_split_points({erlfdb_transaction, Tx}, BeginKey, EndKey, ChunkSize) ->
     erlfdb_transaction_get_range_split_points(Tx, BeginKey, EndKey, ChunkSize).
@@ -538,7 +540,7 @@ erlfdb_transaction_get_read_version(_Transaction) -> ?NOT_LOADED.
 erlfdb_transaction_get(_Transaction, _Key, _Snapshot) -> ?NOT_LOADED.
 erlfdb_transaction_get_estimated_range_size(_Transaction, _SKey, _EKey) -> ?NOT_LOADED.
 erlfdb_transaction_get_range_split_points(_Transaction, _BeginKey, _EndKey, _ChunkSize) ->
-     ?NOT_LOADED.
+    ?NOT_LOADED.
 erlfdb_transaction_get_key(_Transaction, _KeySelector, _Snapshot) -> ?NOT_LOADED.
 erlfdb_transaction_get_addresses_for_key(_Transaction, _Key) -> ?NOT_LOADED.
 erlfdb_transaction_get_range(
