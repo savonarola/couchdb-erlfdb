@@ -29,7 +29,10 @@
     create_database/1,
     database_set_option/2,
     database_set_option/3,
+    database_open_tenant/2,
     database_create_transaction/1,
+
+    tenant_create_transaction/1,
 
     transaction_set_option/2,
     transaction_set_option/3,
@@ -69,6 +72,7 @@
 -type future() :: {erlfdb_future, reference(), reference()}.
 -type database() :: {erlfdb_database, reference()}.
 -type transaction() :: {erlfdb_transaction, reference()}.
+-type tenant() :: {erlfdb_tenant, reference()}.
 
 -type option_value() :: integer() | binary().
 
@@ -247,9 +251,17 @@ database_set_option({erlfdb_database, Db}, Opt, Val) ->
     BinVal = option_val_to_binary(Val),
     erlfdb_database_set_option(Db, Opt, BinVal).
 
+-spec database_open_tenant(database(), binary()) -> tenant().
+database_open_tenant({erlfdb_database, Db}, Name) ->
+    erlfdb_database_open_tenant(Db, Name).
+
 -spec database_create_transaction(database()) -> transaction().
 database_create_transaction({erlfdb_database, Db}) ->
     erlfdb_database_create_transaction(Db).
+
+-spec tenant_create_transaction(tenant()) -> transaction().
+tenant_create_transaction({erlfdb_tenant, Db}) ->
+    erlfdb_tenant_create_transaction(Db).
 
 -spec transaction_set_option(transaction(), Option :: transaction_option()) -> ok.
 transaction_set_option(Transaction, Option) ->
@@ -533,7 +545,11 @@ erlfdb_future_get(_Future) -> ?NOT_LOADED.
 % Databases
 erlfdb_create_database(_ClusterFilePath) -> ?NOT_LOADED.
 erlfdb_database_set_option(_Database, _DatabaseOption, _Value) -> ?NOT_LOADED.
+erlfdb_database_open_tenant(_Database, _Tenant) -> ?NOT_LOADED.
 erlfdb_database_create_transaction(_Database) -> ?NOT_LOADED.
+
+%% Tenants
+erlfdb_tenant_create_transaction(_Database) -> ?NOT_LOADED.
 
 % Transactions
 erlfdb_transaction_set_option(_Transaction, _TransactionOption, _Value) -> ?NOT_LOADED.

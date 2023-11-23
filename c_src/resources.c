@@ -16,6 +16,7 @@
 ErlNifResourceType* ErlFDBFutureRes;
 ErlNifResourceType* ErlFDBDatabaseRes;
 ErlNifResourceType* ErlFDBTransactionRes;
+ErlNifResourceType* ErlFDBTenantRes;
 
 
 int
@@ -58,6 +59,17 @@ erlfdb_init_resources(ErlNifEnv* env)
         return 0;
     }
 
+    ErlFDBTenantRes = enif_open_resource_type(
+            env,
+            NULL,
+            "erlfdb_tenant",
+            erlfdb_tenant_dtor,
+            ERL_NIF_RT_CREATE,
+            NULL
+        );
+    if(ErlFDBTenantRes == NULL) {
+        return 0;
+    }
 
     return 1;
 }
@@ -103,8 +115,32 @@ erlfdb_transaction_dtor(ErlNifEnv* env, void* obj)
 }
 
 
+void
+erlfdb_tenant_dtor(ErlNifEnv* env, void* obj)
+{
+    ErlFDBTenant* t = (ErlFDBTenant*) obj;
+
+    if(t->tenant != NULL) {
+        fdb_tenant_destroy(t->tenant);
+    }
+}
+
+
 int
 erlfdb_transaction_is_owner(ErlNifEnv* env, ErlFDBTransaction* t)
+{
+    ErlNifPid pid;
+    ERL_NIF_TERM self;
+
+    enif_self(env, &pid);
+    self = enif_make_pid(env, &pid);
+
+    return enif_compare(t->owner, self) == 0;
+}
+
+
+int
+erlfdb_tenant_is_owner(ErlNifEnv* env, ErlFDBTenant* t)
 {
     ErlNifPid pid;
     ERL_NIF_TERM self;

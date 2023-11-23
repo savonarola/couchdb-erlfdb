@@ -18,6 +18,8 @@
     open/0,
     open/1,
 
+    open_tenant/2,
+
     create_transaction/1,
     transactional/2,
     snapshot/1,
@@ -129,6 +131,9 @@
 -define(IS_FUTURE, {erlfdb_future, _, _}).
 -define(IS_FOLD_FUTURE, {fold_info, _, _}).
 -define(IS_DB, {erlfdb_database, _}).
+-define(IS_TENANT, {erlfdb_tenant, _}).
+-define(IS_RES, {_RES_TAG_, _}).
+-define(IS_DB_OR_TENANT, (_RES_TAG_ == erlfdb_database orelse _RES_TAG_ == erlfdb_tenant)).
 -define(IS_TX, {erlfdb_transaction, _}).
 -define(IS_SS, {erlfdb_snapshot, _}).
 -define(GET_TX(SS), element(2, SS)).
@@ -151,10 +156,15 @@ open() ->
 open(ClusterFile) ->
     erlfdb_nif:create_database(ClusterFile).
 
-create_transaction(?IS_DB = Db) ->
-    erlfdb_nif:database_create_transaction(Db).
+open_tenant(?IS_DB = Db, Name) ->
+    erlfdb_nif:database_open_tenant(Db, Name).
 
-transactional(?IS_DB = Db, UserFun) when is_function(UserFun, 1) ->
+create_transaction(?IS_DB = Db) ->
+    erlfdb_nif:database_create_transaction(Db);
+create_transaction(?IS_TENANT = Tenant) ->
+    erlfdb_nif:tenant_create_transaction(Tenant).
+
+transactional(?IS_RES = Db, UserFun) when ?IS_DB_OR_TENANT, is_function(UserFun, 1) ->
     clear_erlfdb_error(),
     Tx = create_transaction(Db),
     do_transaction(Tx, UserFun);
@@ -284,7 +294,7 @@ wait_for_all(Futures, Options) ->
         Futures
     ).
 
-get(?IS_DB = Db, Key) ->
+get(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         wait(get(Tx, Key))
     end);
@@ -298,14 +308,14 @@ get_ss(?IS_TX = Tx, Key) ->
 get_ss(?IS_SS = SS, Key) ->
     get_ss(?GET_TX(SS), Key).
 
-get_range_split_points(?IS_DB = Db, BeginKey, EndKey, ChunkSize) ->
+get_range_split_points(?IS_RES = Db, BeginKey, EndKey, ChunkSize) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         wait(get_range_split_points(Tx, BeginKey, EndKey, ChunkSize))
     end);
 get_range_split_points(?IS_TX = Tx, BeginKey, EndKey, ChunkSize) ->
     erlfdb_nif:transaction_get_range_split_points(Tx, BeginKey, EndKey, ChunkSize).
 
-get_key(?IS_DB = Db, Key) ->
+get_key(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         wait(get_key(Tx, Key))
     end);
@@ -320,7 +330,7 @@ get_key_ss(?IS_TX = Tx, Key) ->
 get_range(DbOrTx, StartKey, EndKey) ->
     get_range(DbOrTx, StartKey, EndKey, []).
 
-get_range(?IS_DB = Db, StartKey, EndKey, Options) ->
+get_range(?IS_RES = Db, StartKey, EndKey, Options) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         get_range(Tx, StartKey, EndKey, Options)
     end);
@@ -342,7 +352,7 @@ get_range_startswith(DbOrTx, Prefix, Options) ->
 fold_range(DbOrTx, StartKey, EndKey, Fun, Acc) ->
     fold_range(DbOrTx, StartKey, EndKey, Fun, Acc, []).
 
-fold_range(?IS_DB = Db, StartKey, EndKey, Fun, Acc, Options) ->
+fold_range(?IS_RES = Db, StartKey, EndKey, Fun, Acc, Options) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         fold_range(Tx, StartKey, EndKey, Fun, Acc, Options)
     end);
@@ -380,7 +390,7 @@ fold_range_wait(?IS_TX = Tx, ?IS_FOLD_FUTURE = FI, Fun, Acc) ->
 fold_range_wait(?IS_SS = SS, ?IS_FOLD_FUTURE = FI, Fun, Acc) ->
     fold_range_wait(?GET_TX(SS), FI, Fun, Acc).
 
-set(?IS_DB = Db, Key, Value) ->
+set(?IS_RES = Db, Key, Value) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         set(Tx, Key, Value)
     end);
@@ -389,7 +399,7 @@ set(?IS_TX = Tx, Key, Value) ->
 set(?IS_SS = SS, Key, Value) ->
     set(?GET_TX(SS), Key, Value).
 
-clear(?IS_DB = Db, Key) ->
+clear(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         clear(Tx, Key)
     end);
@@ -398,7 +408,7 @@ clear(?IS_TX = Tx, Key) ->
 clear(?IS_SS = SS, Key) ->
     clear(?GET_TX(SS), Key).
 
-clear_range(?IS_DB = Db, StartKey, EndKey) ->
+clear_range(?IS_RES = Db, StartKey, EndKey) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         clear_range(Tx, StartKey, EndKey)
     end);
@@ -407,7 +417,7 @@ clear_range(?IS_TX = Tx, StartKey, EndKey) ->
 clear_range(?IS_SS = SS, StartKey, EndKey) ->
     clear_range(?GET_TX(SS), StartKey, EndKey).
 
-clear_range_startswith(?IS_DB = Db, Prefix) ->
+clear_range_startswith(?IS_RES = Db, Prefix) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         clear_range_startswith(Tx, Prefix)
     end);
@@ -447,7 +457,7 @@ set_versionstamped_key(DbOrTx, Key, Param) ->
 set_versionstamped_value(DbOrTx, Key, Param) ->
     atomic_op(DbOrTx, Key, Param, set_versionstamped_value).
 
-atomic_op(?IS_DB = Db, Key, Param, Op) ->
+atomic_op(?IS_RES = Db, Key, Param, Op) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         atomic_op(Tx, Key, Param, Op)
     end);
@@ -456,7 +466,7 @@ atomic_op(?IS_TX = Tx, Key, Param, Op) ->
 atomic_op(?IS_SS = SS, Key, Param, Op) ->
     atomic_op(?GET_TX(SS), Key, Param, Op).
 
-watch(?IS_DB = Db, Key) ->
+watch(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         watch(Tx, Key)
     end);
@@ -465,20 +475,20 @@ watch(?IS_TX = Tx, Key) ->
 watch(?IS_SS = SS, Key) ->
     watch(?GET_TX(SS), Key).
 
-get_and_watch(?IS_DB = Db, Key) ->
+get_and_watch(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         KeyFuture = get(Tx, Key),
         WatchFuture = watch(Tx, Key),
         {wait(KeyFuture), WatchFuture}
     end).
 
-set_and_watch(?IS_DB = Db, Key, Value) ->
+set_and_watch(?IS_RES = Db, Key, Value) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         set(Tx, Key, Value),
         watch(Tx, Key)
     end).
 
-clear_and_watch(?IS_DB = Db, Key) ->
+clear_and_watch(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         clear(Tx, Key),
         watch(Tx, Key)
@@ -546,7 +556,7 @@ get_writes_allowed(?IS_TX = Tx) ->
 get_writes_allowed(?IS_SS = SS) ->
     get_writes_allowed(?GET_TX(SS)).
 
-get_addresses_for_key(?IS_DB = Db, Key) ->
+get_addresses_for_key(?IS_RES = Db, Key) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->
         wait(get_addresses_for_key(Tx, Key))
     end);
