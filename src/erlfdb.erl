@@ -84,6 +84,7 @@
     byte_max/3,
     set_versionstamped_key/3,
     set_versionstamped_value/3,
+    compare_and_clear/3,
     atomic_op/4,
 
     % Watches
@@ -456,6 +457,9 @@ set_versionstamped_key(DbOrTx, Key, Param) ->
 
 set_versionstamped_value(DbOrTx, Key, Param) ->
     atomic_op(DbOrTx, Key, Param, set_versionstamped_value).
+
+compare_and_clear(DbOrTx, Key, Param) ->
+    atomic_op(DbOrTx, Key, Param, compare_and_clear).
 
 atomic_op(?IS_RES = Db, Key, Param, Op) when ?IS_DB_OR_TENANT ->
     transactional(Db, fun(Tx) ->

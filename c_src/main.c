@@ -48,6 +48,10 @@ typedef struct _ErlFDBSt
 } ErlFDBSt;
 
 
+#define FDB_TR_EXTRA_OPTION_ALLOW_WRITES -10000
+#define FDB_TR_EXTRA_OPTION_DISALLOW_WRITES -10001
+
+
 static void*
 erlfdb_network_thread(void* arg)
 {
@@ -485,6 +489,7 @@ erlfdb_network_set_option(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // this cast is unsafe, but we guarantee it in the Erlang layer
     option = option_value;
+
     if(!enif_inspect_binary(env, argv[1], &value)) {
         return enif_make_badarg(env);
     }
@@ -747,6 +752,7 @@ erlfdb_database_set_option(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifBinary value;
     fdb_error_t err;
     void* res;
+    int option_value;
 
     if(st->lib_state != ErlFDB_CONNECTED) {
         return enif_make_badarg(env);
@@ -761,35 +767,12 @@ erlfdb_database_set_option(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
     d = (ErlFDBDatabase*) res;
 
-    if(IS_ATOM(argv[1], location_cache_size)) {
-        option = FDB_DB_OPTION_LOCATION_CACHE_SIZE;
-    } else if(IS_ATOM(argv[1], max_watches)) {
-        option = FDB_DB_OPTION_MAX_WATCHES;
-    } else if(IS_ATOM(argv[1], machine_id)) {
-        option = FDB_DB_OPTION_MACHINE_ID;
-    } else if(IS_ATOM(argv[1], datacenter_id)) {
-        option = FDB_DB_OPTION_DATACENTER_ID;
-    } else if(IS_ATOM(argv[1], read_your_writes_enable)) {
-        option = FDB_DB_OPTION_SNAPSHOT_RYW_ENABLE;
-    } else if(IS_ATOM(argv[1], read_your_writes_disable)) {
-        option = FDB_DB_OPTION_SNAPSHOT_RYW_DISABLE;
-    } else if(IS_ATOM(argv[1], transaction_logging_max_field_length)) {
-        option = FDB_DB_OPTION_TRANSACTION_LOGGING_MAX_FIELD_LENGTH;
-    } else if(IS_ATOM(argv[1], timeout)) {
-        option = FDB_DB_OPTION_TRANSACTION_TIMEOUT;
-    } else if(IS_ATOM(argv[1], retry_limit)) {
-        option = FDB_DB_OPTION_TRANSACTION_RETRY_LIMIT;
-    } else if(IS_ATOM(argv[1], max_retry_delay)) {
-        option = FDB_DB_OPTION_TRANSACTION_MAX_RETRY_DELAY;
-    } else if(IS_ATOM(argv[1], size_limit)) {
-        option = FDB_DB_OPTION_TRANSACTION_SIZE_LIMIT;
-    } else if(IS_ATOM(argv[1], causal_read_risky)) {
-        option = FDB_DB_OPTION_TRANSACTION_CAUSAL_READ_RISKY;
-    } else if(IS_ATOM(argv[1], include_port_in_address)) {
-        option = FDB_DB_OPTION_TRANSACTION_INCLUDE_PORT_IN_ADDRESS;
-    } else {
+    if(!enif_get_int(env, argv[1], &option_value)) {
         return enif_make_badarg(env);
     }
+
+    // this cast is unsafe, but we guarantee it in the Erlang layer
+    option = option_value;
 
     if(!enif_inspect_binary(env, argv[2], &value)) {
         return enif_make_badarg(env);
@@ -976,6 +959,7 @@ erlfdb_transaction_set_option(
     ErlNifBinary value;
     fdb_error_t err;
     void* res;
+    int option_value;
 
     if(st->lib_state != ErlFDB_CONNECTED) {
         return enif_make_badarg(env);
@@ -994,10 +978,14 @@ erlfdb_transaction_set_option(
         return enif_make_badarg(env);
     }
 
-    if(IS_ATOM(argv[1], allow_writes)) {
+    if(!enif_get_int(env, argv[1], &option_value)) {
+        return enif_make_badarg(env);
+    }
+
+    if (option_value == FDB_TR_EXTRA_OPTION_ALLOW_WRITES) {
         t->writes_allowed = true;
         return ATOM_ok;
-    } else if (IS_ATOM(argv[1], disallow_writes)) {
+    } else if (option_value == FDB_TR_EXTRA_OPTION_DISALLOW_WRITES) {
         if(!t->read_only) {
             return enif_make_badarg(env);
         }
@@ -1005,74 +993,9 @@ erlfdb_transaction_set_option(
         return ATOM_ok;
     }
 
+    // this cast is unsafe, but we guarantee it in the Erlang layer
+    option = option_value;
 
-    if(IS_ATOM(argv[1], causal_write_risky)) {
-        option = FDB_TR_OPTION_CAUSAL_WRITE_RISKY;
-    } else if(IS_ATOM(argv[1], causal_read_risky)) {
-        option = FDB_TR_OPTION_CAUSAL_READ_RISKY;
-    } else if(IS_ATOM(argv[1], causal_read_disable)) {
-        option = FDB_TR_OPTION_CAUSAL_READ_DISABLE;
-    } else if(IS_ATOM(argv[1], include_port_in_address)) {
-        option = FDB_TR_OPTION_INCLUDE_PORT_IN_ADDRESS;
-    } else if(IS_ATOM(argv[1], next_write_no_write_conflict_range)) {
-        option = FDB_TR_OPTION_NEXT_WRITE_NO_WRITE_CONFLICT_RANGE;
-    } else if(IS_ATOM(argv[1], read_your_writes_disable)) {
-        option = FDB_TR_OPTION_READ_YOUR_WRITES_DISABLE;
-    } else if(IS_ATOM(argv[1], read_ahead_disable)) {
-        option = FDB_TR_OPTION_READ_AHEAD_DISABLE;
-    } else if(IS_ATOM(argv[1], durability_datacenter)) {
-        option = FDB_TR_OPTION_DURABILITY_DATACENTER;
-    } else if(IS_ATOM(argv[1], durability_risky)) {
-        option = FDB_TR_OPTION_DURABILITY_RISKY;
-    } else if(IS_ATOM(argv[1], durability_dev_null_is_web_scale)) {
-        option = FDB_TR_OPTION_DURABILITY_DEV_NULL_IS_WEB_SCALE;
-    } else if(IS_ATOM(argv[1], priority_system_immediate)) {
-        option = FDB_TR_OPTION_PRIORITY_SYSTEM_IMMEDIATE;
-    } else if(IS_ATOM(argv[1], priority_batch)) {
-        option = FDB_TR_OPTION_PRIORITY_BATCH;
-    } else if(IS_ATOM(argv[1], initialize_new_database)) {
-        option = FDB_TR_OPTION_INITIALIZE_NEW_DATABASE;
-    } else if(IS_ATOM(argv[1], access_system_keys)) {
-        option = FDB_TR_OPTION_ACCESS_SYSTEM_KEYS;
-    } else if(IS_ATOM(argv[1], read_system_keys)) {
-        option = FDB_TR_OPTION_READ_SYSTEM_KEYS;
-    } else if(IS_ATOM(argv[1], debug_retry_logging)) {
-        option = FDB_TR_OPTION_DEBUG_RETRY_LOGGING;
-    } else if(IS_ATOM(argv[1], transaction_logging_enable)) {
-        option = FDB_TR_OPTION_TRANSACTION_LOGGING_ENABLE;
-    } else if(IS_ATOM(argv[1], debug_transaction_identifier)) {
-        option = FDB_TR_OPTION_DEBUG_TRANSACTION_IDENTIFIER;
-    } else if(IS_ATOM(argv[1], log_transaction)) {
-        option = FDB_TR_OPTION_LOG_TRANSACTION;
-    } else if(IS_ATOM(argv[1], transaction_logging_max_field_length)) {
-        option = FDB_TR_OPTION_TRANSACTION_LOGGING_MAX_FIELD_LENGTH;
-    } else if(IS_ATOM(argv[1], timeout)) {
-        option = FDB_TR_OPTION_TIMEOUT;
-    } else if(IS_ATOM(argv[1], retry_limit)) {
-        option = FDB_TR_OPTION_RETRY_LIMIT;
-    } else if(IS_ATOM(argv[1], max_retry_delay)) {
-        option = FDB_TR_OPTION_MAX_RETRY_DELAY;
-    } else if(IS_ATOM(argv[1], snapshot_ryw_enable)) {
-        option = FDB_TR_OPTION_SNAPSHOT_RYW_ENABLE;
-    } else if(IS_ATOM(argv[1], snapshot_ryw_disable)) {
-        option = FDB_TR_OPTION_SNAPSHOT_RYW_DISABLE;
-    } else if(IS_ATOM(argv[1], lock_aware)) {
-        option = FDB_TR_OPTION_LOCK_AWARE;
-    } else if(IS_ATOM(argv[1], used_during_commit_protection_disable)) {
-        option = FDB_TR_OPTION_USED_DURING_COMMIT_PROTECTION_DISABLE;
-    } else if(IS_ATOM(argv[1], read_lock_aware)) {
-        option = FDB_TR_OPTION_READ_LOCK_AWARE;
-    } else if(IS_ATOM(argv[1], size_limit)) {
-        option = FDB_TR_OPTION_SIZE_LIMIT;
-    } else if(IS_ATOM(argv[1], use_provisional_proxies)) {
-        option = FDB_TR_OPTION_USE_PROVISIONAL_PROXIES;
-#if FDB_API_VERSION > 620
-    } else if(IS_ATOM(argv[1], report_conflicting_keys)) {
-        option = FDB_TR_OPTION_REPORT_CONFLICTING_KEYS;
-#endif
-    } else {
-        return enif_make_badarg(env);
-    }
 
     if(!enif_inspect_binary(env, argv[2], &value)) {
         return enif_make_badarg(env);
@@ -1451,6 +1374,7 @@ erlfdb_transaction_get_range(
 
     FDBFuture* future;
     void* res;
+    int mode_value;
 
     if(st->lib_state != ErlFDB_CONNECTED) {
         return enif_make_badarg(env);
@@ -1485,23 +1409,12 @@ erlfdb_transaction_get_range(
         return enif_make_badarg(env);
     }
 
-    if(IS_ATOM(argv[5], want_all)) {
-        mode = FDB_STREAMING_MODE_WANT_ALL;
-    } else if(IS_ATOM(argv[5], iterator)) {
-        mode = FDB_STREAMING_MODE_ITERATOR;
-    } else if(IS_ATOM(argv[5], exact)) {
-        mode = FDB_STREAMING_MODE_EXACT;
-    } else if(IS_ATOM(argv[5], small)) {
-        mode = FDB_STREAMING_MODE_SMALL;
-    } else if(IS_ATOM(argv[5], medium)) {
-        mode = FDB_STREAMING_MODE_MEDIUM;
-    } else if(IS_ATOM(argv[5], large)) {
-        mode = FDB_STREAMING_MODE_LARGE;
-    } else if(IS_ATOM(argv[5], serial)) {
-        mode = FDB_STREAMING_MODE_SERIAL;
-    } else if(!enif_get_int(env, argv[5], &mode)) {
+    if(!enif_get_int(env, argv[5], &mode_value)) {
         return enif_make_badarg(env);
     }
+
+    // this cast is unsafe, but we guarantee it in the Erlang layer
+    mode = mode_value;
 
     if(!enif_get_int(env, argv[6], &iteration)) {
         return enif_make_badarg(env);
@@ -1707,6 +1620,7 @@ erlfdb_transaction_atomic_op(
     FDBMutationType mtype;
     ErlNifBinary param;
     void* res;
+    int mt_value;
 
     if(st->lib_state != ErlFDB_CONNECTED) {
         return enif_make_badarg(env);
@@ -1737,31 +1651,12 @@ erlfdb_transaction_atomic_op(
         return enif_make_badarg(env);
     }
 
-    if(IS_ATOM(argv[3], add)) {
-        mtype = FDB_MUTATION_TYPE_ADD;
-    } else if(IS_ATOM(argv[3], bit_and)) {
-        mtype = FDB_MUTATION_TYPE_BIT_AND;
-    } else if(IS_ATOM(argv[3], bit_or)) {
-        mtype = FDB_MUTATION_TYPE_BIT_OR;
-    } else if(IS_ATOM(argv[3], bit_xor)) {
-        mtype = FDB_MUTATION_TYPE_BIT_XOR;
-    } else if(IS_ATOM(argv[3], append_if_fits)) {
-        mtype = FDB_MUTATION_TYPE_APPEND_IF_FITS;
-    } else if(IS_ATOM(argv[3], max)) {
-        mtype = FDB_MUTATION_TYPE_MAX;
-    } else if(IS_ATOM(argv[3], min)) {
-        mtype = FDB_MUTATION_TYPE_MIN;
-    } else if(IS_ATOM(argv[3], byte_min)) {
-        mtype = FDB_MUTATION_TYPE_BYTE_MIN;
-    } else if(IS_ATOM(argv[3], byte_max)) {
-        mtype = FDB_MUTATION_TYPE_BYTE_MAX;
-    } else if(IS_ATOM(argv[3], set_versionstamped_key)) {
-        mtype = FDB_MUTATION_TYPE_SET_VERSIONSTAMPED_KEY;
-    } else if(IS_ATOM(argv[3], set_versionstamped_value)) {
-        mtype = FDB_MUTATION_TYPE_SET_VERSIONSTAMPED_VALUE;
-    } else {
+    if(!enif_get_int(env, argv[3], &mt_value)) {
         return enif_make_badarg(env);
     }
+
+    // this cast is unsafe, but we guarantee it in the Erlang layer
+    mtype = mt_value;
 
     fdb_transaction_atomic_op(
             t->transaction,

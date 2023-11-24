@@ -133,12 +133,25 @@
     location_cache_size
     | max_watches
     | machine_id
-    | datacenter_id.
+    | datacenter_id
+    | snapshot_ryw_enable
+    | snapshot_ryw_disable
+    | transaction_logging_max_field_length
+    | transaction_timeout
+    | transaction_retry_limit
+    | transaction_max_retry_delay
+    | transaction_size_limit
+    | transaction_causal_read_risky
+    | transaction_include_port_in_address
+    | transaction_bypass_unreadable
+    | use_config_database
+    | test_causal_read_risky.
 
 -type transaction_option() ::
     causal_write_risky
     | causal_read_risky
     | causal_read_disable
+    | include_port_in_address
     | next_write_no_write_conflict_range
     | read_your_writes_disable
     | read_ahead_disable
@@ -150,17 +163,33 @@
     | initialize_new_database
     | access_system_keys
     | read_system_keys
+    | raw_access
+    | debug_dump
     | debug_retry_logging
     | transaction_logging_enable
+    | debug_transaction_identifier
+    | log_transaction
+    | transaction_logging_max_field_length
+    | server_request_tracing
     | timeout
     | retry_limit
     | max_retry_delay
+    | size_limit
     | snapshot_ryw_enable
     | snapshot_ryw_disable
     | lock_aware
     | used_during_commit_protection_disable
     | read_lock_aware
-    | size_limit
+    | use_provisional_proxies
+    | report_conflicting_keys
+    | special_key_space_relaxed
+    | special_key_space_enable_writes
+    | tag
+    | auto_throttle_tag
+    | span_parent
+    | expensive_clear_cost_estimation_enable
+    | bypass_unreadable
+    | use_grv_cache
     | allow_writes
     | disallow_writes.
 
@@ -181,10 +210,11 @@
     | append_if_fits
     | max
     | min
+    | set_versionstamped_key
+    | set_versionstamped_value
     | byte_min
     | byte_max
-    | set_versionstamped_key
-    | set_versionstamped_value.
+    | compare_and_clear.
 
 -type atomic_operand() :: integer() | binary().
 
@@ -249,7 +279,8 @@ database_set_option(Database, Option) ->
 ) -> ok.
 database_set_option({erlfdb_database, Db}, Opt, Val) ->
     BinVal = option_val_to_binary(Val),
-    erlfdb_database_set_option(Db, Opt, BinVal).
+    OptVal = erlfdb_nif_option:to_database_option(Opt),
+    erlfdb_database_set_option(Db, OptVal, BinVal).
 
 -spec database_open_tenant(database(), binary()) -> tenant().
 database_open_tenant({erlfdb_database, Db}, Name) ->
@@ -274,7 +305,8 @@ transaction_set_option(Transaction, Option) ->
 ) -> ok.
 transaction_set_option({erlfdb_transaction, Tx}, Opt, Val) ->
     BinVal = option_val_to_binary(Val),
-    erlfdb_transaction_set_option(Tx, Opt, BinVal).
+    OptVal = erlfdb_nif_option:to_transaction_option(Opt),
+    erlfdb_transaction_set_option(Tx, OptVal, BinVal).
 
 -spec transaction_set_read_version(transaction(), Version :: integer()) -> ok.
 transaction_set_read_version({erlfdb_transaction, Tx}, Version) ->
@@ -339,13 +371,14 @@ transaction_get_range(
     Snapshot,
     Reverse
 ) ->
+    StreamingModeVal = erlfdb_nif_option:to_stream_mode(StreamingMode),
     erlfdb_transaction_get_range(
         Tx,
         StartKeySelector,
         EndKeySelector,
         Limit,
         TargetBytes,
-        StreamingMode,
+        StreamingModeVal,
         Iteration,
         Snapshot,
         Reverse
@@ -381,7 +414,8 @@ transaction_atomic_op({erlfdb_transaction, Tx}, Key, Operand, OpName) ->
             Int when is_integer(Int) ->
                 <<Int:64/little>>
         end,
-    erlfdb_transaction_atomic_op(Tx, Key, BinOperand, OpName).
+    OpValue = erlfdb_nif_option:to_mutation_type(OpName),
+    erlfdb_transaction_atomic_op(Tx, Key, BinOperand, OpValue).
 
 -spec transaction_commit(transaction()) -> future().
 transaction_commit({erlfdb_transaction, Tx}) ->
@@ -517,12 +551,8 @@ select_api_version(Version) when is_integer(Version), Version > 0 ->
     ok | error().
 network_set_option(Name, Value) ->
     Option = erlfdb_nif_option:to_network_option(Name),
-    BinValue =
-        case Value of
-            B when is_binary(B) -> B;
-            I when is_integer(I) -> <<I:8/little-unsigned-integer-unit:8>>
-        end,
-    erlfdb_network_set_option(Option, BinValue).
+    BinVal = option_val_to_binary(Value),
+    erlfdb_network_set_option(Option, BinVal).
 
 % Sentinel Check
 erlfdb_can_initialize() -> ?NOT_LOADED.

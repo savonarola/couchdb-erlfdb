@@ -89,7 +89,7 @@ cannot_set_watches_if_writes_disallowed_test() ->
 
 size_limit_on_db_handle_test() ->
     Db1 = erlfdb_util:get_test_db(),
-    erlfdb:set_option(Db1, size_limit, 10000),
+    erlfdb:set_option(Db1, transaction_size_limit, 10000),
     ?assertError(
         {erlfdb_error, 2101},
         erlfdb:transactional(Db1, fun(Tx) ->
