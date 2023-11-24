@@ -235,19 +235,34 @@ to_transaction_option(disallow_writes) ->
 to_transaction_option(_) ->
     error(badarg).
 
-to_stream_mode(stream_want_all) ->
+to_stream_mode(want_all) ->
     ?FDB_STREAMING_MODE_WANT_ALL;
-to_stream_mode(stream_iterator) ->
+to_stream_mode(iterator) ->
     ?FDB_STREAMING_MODE_ITERATOR;
-to_stream_mode(stream_exact) ->
+to_stream_mode(exact) ->
     ?FDB_STREAMING_MODE_EXACT;
-to_stream_mode(stream_small) ->
+to_stream_mode(small) ->
     ?FDB_STREAMING_MODE_SMALL;
-to_stream_mode(stream_medium) ->
+to_stream_mode(medium) ->
     ?FDB_STREAMING_MODE_MEDIUM;
-to_stream_mode(stream_large) ->
+to_stream_mode(large) ->
     ?FDB_STREAMING_MODE_LARGE;
-to_stream_mode(stream_serial) ->
+to_stream_mode(serial) ->
+    ?FDB_STREAMING_MODE_SERIAL;
+%% the below codes are special for the bindingtester
+to_stream_mode(?FDB_STREAMING_MODE_WANT_ALL) ->
+    ?FDB_STREAMING_MODE_WANT_ALL;
+to_stream_mode(?FDB_STREAMING_MODE_ITERATOR) ->
+    ?FDB_STREAMING_MODE_ITERATOR;
+to_stream_mode(?FDB_STREAMING_MODE_EXACT) ->
+    ?FDB_STREAMING_MODE_EXACT;
+to_stream_mode(?FDB_STREAMING_MODE_SMALL) ->
+    ?FDB_STREAMING_MODE_SMALL;
+to_stream_mode(?FDB_STREAMING_MODE_MEDIUM) ->
+    ?FDB_STREAMING_MODE_MEDIUM;
+to_stream_mode(?FDB_STREAMING_MODE_LARGE) ->
+    ?FDB_STREAMING_MODE_LARGE;
+to_stream_mode(?FDB_STREAMING_MODE_SERIAL) ->
     ?FDB_STREAMING_MODE_SERIAL;
 to_stream_mode(_) ->
     error(badarg).

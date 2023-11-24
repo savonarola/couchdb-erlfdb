@@ -18,8 +18,6 @@
     open/0,
     open/1,
 
-    open_tenant/2,
-
     create_transaction/1,
     transactional/2,
     snapshot/1,
@@ -156,9 +154,6 @@ open() ->
 
 open(ClusterFile) ->
     erlfdb_nif:create_database(ClusterFile).
-
-open_tenant(?IS_DB = Db, Name) ->
-    erlfdb_nif:database_open_tenant(Db, Name).
 
 create_transaction(?IS_DB = Db) ->
     erlfdb_nif:database_create_transaction(Db);

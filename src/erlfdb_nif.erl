@@ -194,13 +194,13 @@
     | disallow_writes.
 
 -type streaming_mode() ::
-    stream_want_all
-    | stream_iterator
-    | stream_exact
-    | stream_small
-    | stream_medium
-    | stream_large
-    | stream_serial.
+    want_all
+    | iterator
+    | exact
+    | small
+    | medium
+    | large
+    | serial.
 
 -type atomic_mode() ::
     add

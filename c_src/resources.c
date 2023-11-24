@@ -137,16 +137,3 @@ erlfdb_transaction_is_owner(ErlNifEnv* env, ErlFDBTransaction* t)
 
     return enif_compare(t->owner, self) == 0;
 }
-
-
-int
-erlfdb_tenant_is_owner(ErlNifEnv* env, ErlFDBTenant* t)
-{
-    ErlNifPid pid;
-    ERL_NIF_TERM self;
-
-    enif_self(env, &pid);
-    self = enif_make_pid(env, &pid);
-
-    return enif_compare(t->owner, self) == 0;
-}

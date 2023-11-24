@@ -804,7 +804,6 @@ erlfdb_database_open_tenant(
     ErlFDBDatabase* d;
     ErlFDBTenant* t;
     FDBTenant* tenant;
-    ErlNifPid pid;
     ERL_NIF_TERM ret;
     void* res;
     ErlNifBinary bin;
@@ -834,9 +833,6 @@ erlfdb_database_open_tenant(
 
     t = enif_alloc_resource(ErlFDBTenantRes, sizeof(ErlFDBTenant));
     t->tenant = tenant;
-
-    enif_self(env, &pid);
-    t->owner = enif_make_pid(env, &pid);
 
     ret = enif_make_resource(env, t);
     enif_release_resource(t);
