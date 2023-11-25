@@ -15,6 +15,7 @@
 
 -record(st, {
     db,
+    tenant,
     tx_mgr,
     tx_name,
     instructions,
@@ -227,14 +228,21 @@ stack_pop_tuples(St, Count) ->
 get_transaction(TxName) ->
     get({'$erlfdb_tx', TxName}).
 
-new_transaction(Db, TxName) ->
-    Tx = erlfdb:create_transaction(Db),
+new_transaction(#st{db = Db, tenant = Tenant}, TxName) ->
+    Src =
+        case Tenant of
+            undefined ->
+                Db;
+            _ ->
+                Tenant
+        end,
+    Tx = erlfdb:create_transaction(Src),
     put({'$erlfdb_tx', TxName}, Tx).
 
-switch_transaction(Db, TxName) ->
+switch_transaction(St, TxName) ->
     case get_transaction(TxName) of
         undefined ->
-            new_transaction(Db, TxName);
+            new_transaction(St, TxName);
         _ ->
             ok
     end.
@@ -305,6 +313,7 @@ init_run_loop(Db, Prefix) ->
     {StartKey, EndKey} = erlfdb_tuple:range({Prefix}),
     St = #st{
         db = Db,
+        tenant = undefined,
         tx_name = Prefix,
         instructions = erlfdb:get_range(Db, StartKey, EndKey),
         op_tuple = undefined,
@@ -443,11 +452,11 @@ execute(_TxObj, St, <<"WAIT_FUTURE">>) ->
     stack_push(St#st.stack, Value),
     St;
 execute(_TxObj, St, <<"NEW_TRANSACTION">>) ->
-    new_transaction(St#st.db, St#st.tx_name),
+    new_transaction(St, St#st.tx_name),
     St;
 execute(_TxObj, St, <<"USE_TRANSACTION">>) ->
     TxName = stack_pop(St),
-    switch_transaction(St#st.db, TxName),
+    switch_transaction(St, TxName),
     St#st{
         tx_name = TxName
     };
@@ -756,6 +765,22 @@ execute(TxObj, St, <<"GET_RANGE_SPLIT_POINTS">>) ->
     Result = erlfdb:get_range_split_points(TxObj, Start, End, ChunkSize),
     stack_push_range(St, Result),
     St;
+execute(TxObj, St, <<"TENANT_CREATE">>) ->
+    Tenant = stack_pop(St),
+    _Result = erlfdb_tenant:create_tenant(TxObj, Tenant),
+    stack_push(St, <<"RESULT_NOT_PRESENT">>),
+    St;
+execute(TxObj, St, <<"TENANT_DELETE">>) ->
+    Tenant = stack_pop(St),
+    _Result = erlfdb_tenant:delete_tenant(TxObj, Tenant),
+    stack_push(St, <<"RESULT_NOT_PRESENT">>),
+    St;
+execute(_TxObj, #st{db = Db} = St, <<"TENANT_SET_ACTIVE">>) ->
+    Tenant = stack_pop(St),
+    Result = erlfdb_tenant:open_tenant(Db, Tenant),
+    St#st{tenant = Result};
+execute(_TxObj, St, <<"TENANT_CLEAR_ACTIVE">>) ->
+    St#st{tenant = undefined};
 execute(_TxObj, _St, UnknownOp) ->
     erlang:error({unknown_op, UnknownOp}).
 
