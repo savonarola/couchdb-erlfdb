@@ -24,7 +24,7 @@
     compare/2
 ]).
 
--export([encode/2, decode/2]).
+-export([enc_null_terminated/1, dec_null_terminated/1]).
 
 % Codes 16#40 - 16#4F are reserved as User type codes
 % https://github.com/apple/foundationdb/blob/main/design/tuple.md#user-type-codes
@@ -96,13 +96,13 @@
 -define(UNSET_VERSIONSTAMP80, <<16#FFFFFFFFFFFFFFFFFFFF:80>>).
 -define(UNSET_VERSIONSTAMP96, <<16#FFFFFFFFFFFFFFFFFFFF:80, _:16>>).
 
--type decoder() :: fun((term(), non_neg_integer()) -> binary()).
--type encoder() :: fun((binary(), non_neg_integer()) -> term()).
+-type custom_encoder() :: fun((term(), non_neg_integer()) -> {true, binary()} | false).
+-type custom_decoder() :: fun((binary(), non_neg_integer()) -> {true, term(), binary()} | flase).
 
--type pack_options() :: #{prefix => binary(), encoder := encoder()}.
--type unpack_options() :: #{prefix => binary(), decoder := decoder()}.
+-type pack_options() :: #{prefix => binary(), custom_encoder => custom_encoder()}.
+-type unpack_options() :: #{prefix => binary(), custom_decoder => custom_decoder()}.
 
--export_type([decoder/0, encoder/0, pack_options/0, unpack_options/0]).
+-export_type([custom_encoder/0, custom_decoder/0, pack_options/0, unpack_options/0]).
 
 pack(Tuple) when is_tuple(Tuple) ->
     pack(Tuple, #{}).
@@ -110,9 +110,11 @@ pack(Tuple) when is_tuple(Tuple) ->
 pack(Tuple, Prefix) when is_binary(Prefix) ->
     pack(Tuple, #{prefix => Prefix});
 pack(Tuple, Options) ->
-    #{prefix := Prefix, encoder := Encoder} = maps:merge(default_pack_options(), Options),
+    #{prefix := Prefix, custom_encoder := Encoder} = maps:merge(
+        default_pack_options(), Options
+    ),
     Elems = tuple_to_list(Tuple),
-    Encoded = [Encoder(E, 0) || E <- Elems],
+    Encoded = [encode(E, 0, Encoder) || E <- Elems],
     iolist_to_binary([Prefix | Encoded]).
 
 pack_vs(Tuple) ->
@@ -121,9 +123,11 @@ pack_vs(Tuple) ->
 pack_vs(Tuple, Prefix) when is_binary(Prefix) ->
     pack_vs(Tuple, #{prefix => Prefix});
 pack_vs(Tuple, Options) ->
-    #{prefix := Prefix, encoder := Encoder} = maps:merge(default_pack_options(), Options),
+    #{prefix := Prefix, custom_encoder := Encoder} = maps:merge(
+        default_pack_options(), Options
+    ),
     Elems = tuple_to_list(Tuple),
-    Encoded = [Encoder(E, 0) || E <- Elems],
+    Encoded = [encode(E, 0, Encoder) || E <- Elems],
     case find_incomplete_versionstamp(Encoded) of
         {found, Pos} ->
             VsnPos = Pos + size(Prefix),
@@ -140,11 +144,13 @@ unpack(Binary) ->
 unpack(Binary, Prefix) when is_binary(Prefix) ->
     unpack(Binary, #{prefix => Prefix});
 unpack(Binary, Options) ->
-    #{prefix := Prefix, decoder := Decoder} = maps:merge(default_unpack_options(), Options),
+    #{prefix := Prefix, custom_decoder := Decoder} = maps:merge(
+        default_unpack_options(), Options
+    ),
     PrefixLen = size(Prefix),
     case Binary of
         <<Prefix:PrefixLen/binary, Rest/binary>> ->
-            case Decoder(Rest, 0) of
+            case decode(Rest, 0, Decoder) of
                 {Elems, <<>>} ->
                     list_to_tuple(Elems);
                 {_, Tail} ->
@@ -183,46 +189,47 @@ compare_impl([A | RestA], [B | RestB]) ->
     end.
 
 %% erlfmt-ignore
-encode(null, 0) ->
+
+encode(null, 0, _) ->
     <<?NULL>>;
 
-encode(null, Depth) when Depth > 0 ->
+encode(null, Depth, _) when Depth > 0 ->
     [<<?NULL, ?ESCAPE>>];
 
-encode(false, _) ->
+encode(false, _, _) ->
     <<?FALSE>>;
 
-encode(true, _) ->
+encode(true, _, _) ->
     <<?TRUE>>;
 
-encode({utf8, Bin}, _) when is_binary(Bin) ->
+encode({utf8, Bin}, _, _) when is_binary(Bin) ->
     [<<?STRING>>, enc_null_terminated(Bin)];
 
-encode({float, F} = Float, _) when is_float(F) ->
+encode({float, F} = Float, _, _) when is_float(F) ->
     [<<?FLOAT>>, enc_float(Float)];
 
-encode({float, _, _F} = Float, _) ->
+encode({float, _, _F} = Float, _, _) ->
     [<<?FLOAT>>, enc_float(Float)];
 
-encode({double, _, _D} = Double, _) ->
+encode({double, _, _D} = Double, _, _) ->
     [<<?DOUBLE>>, enc_float(Double)];
 
-encode({uuid, Bin}, _) when is_binary(Bin), size(Bin) == 16 ->
+encode({uuid, Bin}, _, _) when is_binary(Bin), size(Bin) == 16 ->
     [<<?UUID>>, Bin];
 
-encode({id64, Int}, _) ->
+encode({id64, Int}, _, _) ->
     [<<?ID64>>, <<Int:64/big>>];
 
-encode({versionstamp, Id, Batch}, _) ->
+encode({versionstamp, Id, Batch}, _, _) ->
     [<<?VS80>>, <<Id:64/big, Batch:16/big>>];
 
-encode({versionstamp, Id, Batch, Tx}, _) ->
+encode({versionstamp, Id, Batch, Tx}, _, _) ->
     [<<?VS96>>, <<Id:64/big, Batch:16/big, Tx:16/big>>];
 
-encode(Bin, _Depth) when is_binary(Bin) ->
+encode(Bin, _Depth, _) when is_binary(Bin) ->
     [<<?BYTES>>, enc_null_terminated(Bin)];
 
-encode(Int, _Depth) when is_integer(Int), Int < 0 ->
+encode(Int, _Depth, _) when is_integer(Int), Int < 0 ->
     Bin1 = binary:encode_unsigned(-Int),
     % Take the one's complement so that
     % they sort properly
@@ -239,10 +246,10 @@ encode(Int, _Depth) when is_integer(Int), Int < 0 ->
         N when N =< 255 -> [<<?NEG_INT_9P, (N bxor 16#FF)>>, Bin2]
     end;
 
-encode(0, _) ->
+encode(0, _, _) ->
     [<<?ZERO>>];
 
-encode(Int, _Depth) when is_integer(Int), Int > 0 ->
+encode(Int, _Depth, _) when is_integer(Int), Int > 0 ->
     Bin = binary:encode_unsigned(Int),
     case size(Bin) of
         1 -> [<<?POS_INT_1>>, Bin];
@@ -256,16 +263,21 @@ encode(Int, _Depth) when is_integer(Int), Int > 0 ->
         N when N =< 255 -> [<<?POS_INT_9P, N>>, Bin]
     end;
 
-encode(Double, _) when is_float(Double) ->
+encode(Double, _, _) when is_float(Double) ->
     [<<?DOUBLE>>, enc_float(Double)];
 
-encode(Tuple, Depth) when is_tuple(Tuple) ->
+encode(Tuple, Depth, Encoder) when is_tuple(Tuple) ->
     Elems = tuple_to_list(Tuple),
-    Encoded = [encode(E, Depth + 1) || E <- Elems],
+    Encoded = [encode(E, Depth + 1, Encoder) || E <- Elems],
     [<<?NESTED>>, Encoded, <<?NULL>>];
 
-encode(BadTerm, _) ->
-    erlang:error({invalid_tuple_term, BadTerm}).
+encode(Term, Depth, Encoder) ->
+    case Encoder(Term, Depth) of
+        {true, Value} ->
+            Value;
+        false ->
+            erlang:error({invalid_tuple_term, Term})
+    end.
 
 enc_null_terminated(Bin) ->
     enc_null_terminated(Bin, 0).
@@ -290,96 +302,105 @@ enc_float(Float) ->
     end.
 
 %% erlfmt-ignore
-decode(<<>>, 0) ->
+decode(<<>>, 0, _) ->
     {[], <<>>};
 
-decode(<<?NULL, Rest/binary>>, 0) ->
-    {Values, Tail} = decode(Rest, 0),
+decode(<<?NULL, Rest/binary>>, 0, Decoder) ->
+    {Values, Tail} = decode(Rest, 0, Decoder),
     {[null | Values], Tail};
 
-decode(<<?NULL, ?ESCAPE, Rest/binary>>, Depth) when Depth > 0 ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?NULL, ?ESCAPE, Rest/binary>>, Depth, Decoder) when Depth > 0 ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[null | Values], Tail};
 
-decode(<<?NULL, Rest/binary>>, Depth) when Depth > 0 ->
+decode(<<?NULL, Rest/binary>>, Depth, _) when Depth > 0 ->
     {[], Rest};
 
-decode(<<?BYTES, Rest/binary>>, Depth) ->
+decode(<<?BYTES, Rest/binary>>, Depth, Decoder) ->
     {Bin, NewRest} = dec_null_terminated(Rest),
-    {Values, Tail} = decode(NewRest, Depth),
+    {Values, Tail} = decode(NewRest, Depth, Decoder),
     {[Bin | Values], Tail};
 
-decode(<<?STRING, Rest/binary>>, Depth) ->
+decode(<<?STRING, Rest/binary>>, Depth, Decoder) ->
     {Bin, NewRest} = dec_null_terminated(Rest),
-    {Values, Tail} = decode(NewRest, Depth),
+    {Values, Tail} = decode(NewRest, Depth, Decoder),
     {[{utf8, Bin} | Values], Tail};
 
-decode(<<?NESTED, Rest/binary>>, Depth) ->
-    {NestedValues, Tail1} = decode(Rest, Depth + 1),
-    {RestValues, Tail2} = decode(Tail1, Depth),
+decode(<<?NESTED, Rest/binary>>, Depth, Decoder) ->
+    {NestedValues, Tail1} = decode(Rest, Depth + 1, Decoder),
+    {RestValues, Tail2} = decode(Tail1, Depth, Decoder),
     NestedTuple = list_to_tuple(NestedValues),
     {[NestedTuple | RestValues], Tail2};
 
-decode(<<?NEG_INT_9P, InvertedSize:8, Rest/binary>>, Depth) ->
+decode(<<?NEG_INT_9P, InvertedSize:8, Rest/binary>>, Depth, Decoder) ->
     Size = InvertedSize bxor 16#FF,
-    dec_neg_int(Rest, Size, Depth);
+    dec_neg_int(Rest, Size, Depth, Decoder);
 
-decode(<<?NEG_INT_8, Rest/binary>>, Depth) -> dec_neg_int(Rest, 8, Depth);
-decode(<<?NEG_INT_7, Rest/binary>>, Depth) -> dec_neg_int(Rest, 7, Depth);
-decode(<<?NEG_INT_6, Rest/binary>>, Depth) -> dec_neg_int(Rest, 6, Depth);
-decode(<<?NEG_INT_5, Rest/binary>>, Depth) -> dec_neg_int(Rest, 5, Depth);
-decode(<<?NEG_INT_4, Rest/binary>>, Depth) -> dec_neg_int(Rest, 4, Depth);
-decode(<<?NEG_INT_3, Rest/binary>>, Depth) -> dec_neg_int(Rest, 3, Depth);
-decode(<<?NEG_INT_2, Rest/binary>>, Depth) -> dec_neg_int(Rest, 2, Depth);
-decode(<<?NEG_INT_1, Rest/binary>>, Depth) -> dec_neg_int(Rest, 1, Depth);
+decode(<<?NEG_INT_8, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 8, Depth, Decoder);
+decode(<<?NEG_INT_7, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 7, Depth, Decoder);
+decode(<<?NEG_INT_6, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 6, Depth, Decoder);
+decode(<<?NEG_INT_5, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 5, Depth, Decoder);
+decode(<<?NEG_INT_4, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 4, Depth, Decoder);
+decode(<<?NEG_INT_3, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 3, Depth, Decoder);
+decode(<<?NEG_INT_2, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 2, Depth, Decoder);
+decode(<<?NEG_INT_1, Rest/binary>>, Depth, Decoder) -> dec_neg_int(Rest, 1, Depth, Decoder);
 
-decode(<<?ZERO, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?ZERO, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[0 | Values], Tail};
 
-decode(<<?POS_INT_1, Rest/binary>>, Depth) -> dec_pos_int(Rest, 1, Depth);
-decode(<<?POS_INT_2, Rest/binary>>, Depth) -> dec_pos_int(Rest, 2, Depth);
-decode(<<?POS_INT_3, Rest/binary>>, Depth) -> dec_pos_int(Rest, 3, Depth);
-decode(<<?POS_INT_4, Rest/binary>>, Depth) -> dec_pos_int(Rest, 4, Depth);
-decode(<<?POS_INT_5, Rest/binary>>, Depth) -> dec_pos_int(Rest, 5, Depth);
-decode(<<?POS_INT_6, Rest/binary>>, Depth) -> dec_pos_int(Rest, 6, Depth);
-decode(<<?POS_INT_7, Rest/binary>>, Depth) -> dec_pos_int(Rest, 7, Depth);
-decode(<<?POS_INT_8, Rest/binary>>, Depth) -> dec_pos_int(Rest, 8, Depth);
+decode(<<?POS_INT_1, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 1, Depth, Decoder);
+decode(<<?POS_INT_2, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 2, Depth, Decoder);
+decode(<<?POS_INT_3, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 3, Depth, Decoder);
+decode(<<?POS_INT_4, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 4, Depth, Decoder);
+decode(<<?POS_INT_5, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 5, Depth, Decoder);
+decode(<<?POS_INT_6, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 6, Depth, Decoder);
+decode(<<?POS_INT_7, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 7, Depth, Decoder);
+decode(<<?POS_INT_8, Rest/binary>>, Depth, Decoder) -> dec_pos_int(Rest, 8, Depth, Decoder);
 
-decode(<<?POS_INT_9P, Size:8/unsigned-integer, Rest/binary>>, Depth) ->
-    dec_pos_int(Rest, Size, Depth);
+decode(<<?POS_INT_9P, Size:8/unsigned-integer, Rest/binary>>, Depth, Decoder) ->
+    dec_pos_int(Rest, Size, Depth, Decoder);
 
-decode(<<?FLOAT, Raw:4/binary, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?FLOAT, Raw:4/binary, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[dec_float(Raw) | Values], Tail};
 
-decode(<<?DOUBLE, Raw:8/binary, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?DOUBLE, Raw:8/binary, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[dec_float(Raw) | Values], Tail};
 
-decode(<<?FALSE, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?FALSE, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[false | Values], Tail};
 
-decode(<<?TRUE, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?TRUE, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[true | Values], Tail};
 
-decode(<<?UUID, UUID:16/binary, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?UUID, UUID:16/binary, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[{uuid, UUID} | Values], Tail};
 
-decode(<<?ID64, Id:64/big, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?ID64, Id:64/big, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[{id64, Id} | Values], Tail};
 
-decode(<<?VS80, Id:64/big, Batch:16/big, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
+decode(<<?VS80, Id:64/big, Batch:16/big, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
     {[{versionstamp, Id, Batch} | Values], Tail};
 
-decode(<<?VS96, Id:64/big, Batch:16/big, Tx:16/big, Rest/binary>>, Depth) ->
-    {Values, Tail} = decode(Rest, Depth),
-    {[{versionstamp, Id, Batch, Tx} | Values], Tail}.
+decode(<<?VS96, Id:64/big, Batch:16/big, Tx:16/big, Rest/binary>>, Depth, Decoder) ->
+    {Values, Tail} = decode(Rest, Depth, Decoder),
+    {[{versionstamp, Id, Batch, Tx} | Values], Tail};
+
+decode(Bin, Depth, Decoder) ->
+    case Decoder(Bin, Depth) of
+        {true, Value, Rest} ->
+            {Values, Tail} = decode(Rest, Depth, Decoder),
+            {[Value | Values], Tail};
+        false ->
+            erlang:error({invalid_binary, Bin})
+    end.
 
 dec_null_terminated(Bin) ->
     {Parts, Tail} = dec_null_terminated(Bin, 0),
@@ -398,20 +419,20 @@ dec_null_terminated(Bin, Offset) ->
             erlang:error({invalid_null_termination, Bin})
     end.
 
-dec_neg_int(Bin, Size, Depth) ->
+dec_neg_int(Bin, Size, Depth, Decoder) ->
     case Bin of
         <<Raw:Size/integer-unit:8, Rest/binary>> ->
             Val = Raw - (1 bsl (Size * 8)) + 1,
-            {Values, Tail} = decode(Rest, Depth),
+            {Values, Tail} = decode(Rest, Depth, Decoder),
             {[Val | Values], Tail};
         _ ->
             erlang:error({invalid_negative_int, Size, Bin})
     end.
 
-dec_pos_int(Bin, Size, Depth) ->
+dec_pos_int(Bin, Size, Depth, Decoder) ->
     case Bin of
         <<Val:Size/integer-unit:8, Rest/binary>> ->
-            {Values, Tail} = decode(Rest, Depth),
+            {Values, Tail} = decode(Rest, Depth, Decoder),
             {[Val | Values], Tail};
         _ ->
             erlang:error({invalid_positive_int, Size, Bin})
@@ -513,11 +534,14 @@ code_for(Bad) -> erlang:error({invalid_tuple_element, Bad}).
 
 -spec default_pack_options() -> pack_options().
 default_pack_options() ->
-    #{prefix => <<>>, encoder => fun encode/2}.
+    #{prefix => <<>>, custom_encoder => fun default_custom_fun/2}.
 
 -spec default_unpack_options() -> unpack_options().
 default_unpack_options() ->
-    #{prefix => <<>>, decoder => fun decode/2}.
+    #{prefix => <<>>, custom_decoder => fun default_custom_fun/2}.
+
+default_custom_fun(_Term, _Depth) ->
+    false.
 
 -ifdef(TEST).
 
