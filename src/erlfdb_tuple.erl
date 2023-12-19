@@ -267,9 +267,14 @@ encode(Double, _, _) when is_float(Double) ->
     [<<?DOUBLE>>, enc_float(Double)];
 
 encode(Tuple, Depth, Encoder) when is_tuple(Tuple) ->
-    Elems = tuple_to_list(Tuple),
-    Encoded = [encode(E, Depth + 1, Encoder) || E <- Elems],
-    [<<?NESTED>>, Encoded, <<?NULL>>];
+    case Encoder(Tuple, Depth) of
+        {true, Value} ->
+            Value;
+        false ->
+            Elems = tuple_to_list(Tuple),
+            Encoded = [encode(E, Depth + 1, Encoder) || E <- Elems],
+            [<<?NESTED>>, Encoded, <<?NULL>>]
+    end;
 
 encode(Term, Depth, Encoder) ->
     case Encoder(Term, Depth) of
