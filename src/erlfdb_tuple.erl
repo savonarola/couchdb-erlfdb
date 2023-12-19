@@ -24,6 +24,11 @@
     compare/2
 ]).
 
+-export([encode/2, decode/2]).
+
+% Codes 16#40 - 16#4F are reserved as User type codes
+% https://github.com/apple/foundationdb/blob/main/design/tuple.md#user-type-codes
+
 % Codes 16#03, 16#04, 16#23, and 16#24 are reserved
 % for historical reasons.
 
@@ -91,20 +96,34 @@
 -define(UNSET_VERSIONSTAMP80, <<16#FFFFFFFFFFFFFFFFFFFF:80>>).
 -define(UNSET_VERSIONSTAMP96, <<16#FFFFFFFFFFFFFFFFFFFF:80, _:16>>).
 
-pack(Tuple) when is_tuple(Tuple) ->
-    pack(Tuple, <<>>).
+-type decoder() :: fun((term(), non_neg_integer()) -> binary()).
+-type encoder() :: fun((binary(), non_neg_integer()) -> term()).
 
-pack(Tuple, Prefix) ->
+-type pack_options() :: #{prefix => binary(), encoder := encoder()}.
+-type unpack_options() :: #{prefix => binary(), decoder := decoder()}.
+
+-export_type([decoder/0, encoder/0, pack_options/0, unpack_options/0]).
+
+pack(Tuple) when is_tuple(Tuple) ->
+    pack(Tuple, #{}).
+
+pack(Tuple, Prefix) when is_binary(Prefix) ->
+    pack(Tuple, #{prefix => Prefix});
+pack(Tuple, Options) ->
+    #{prefix := Prefix, encoder := Encoder} = maps:merge(default_pack_options(), Options),
     Elems = tuple_to_list(Tuple),
-    Encoded = [encode(E, 0) || E <- Elems],
+    Encoded = [Encoder(E, 0) || E <- Elems],
     iolist_to_binary([Prefix | Encoded]).
 
 pack_vs(Tuple) ->
-    pack_vs(Tuple, <<>>).
+    pack_vs(Tuple, #{}).
 
-pack_vs(Tuple, Prefix) ->
+pack_vs(Tuple, Prefix) when is_binary(Prefix) ->
+    pack_vs(Tuple, #{prefix => Prefix});
+pack_vs(Tuple, Options) ->
+    #{prefix := Prefix, encoder := Encoder} = maps:merge(default_pack_options(), Options),
     Elems = tuple_to_list(Tuple),
-    Encoded = [encode(E, 0) || E <- Elems],
+    Encoded = [Encoder(E, 0) || E <- Elems],
     case find_incomplete_versionstamp(Encoded) of
         {found, Pos} ->
             VsnPos = Pos + size(Prefix),
@@ -116,13 +135,16 @@ pack_vs(Tuple, Prefix) ->
     end.
 
 unpack(Binary) ->
-    unpack(Binary, <<>>).
+    unpack(Binary, #{}).
 
-unpack(Binary, Prefix) ->
+unpack(Binary, Prefix) when is_binary(Prefix) ->
+    unpack(Binary, #{prefix => Prefix});
+unpack(Binary, Options) ->
+    #{prefix := Prefix, decoder := Decoder} = maps:merge(default_unpack_options(), Options),
     PrefixLen = size(Prefix),
     case Binary of
         <<Prefix:PrefixLen/binary, Rest/binary>> ->
-            case decode(Rest, 0) of
+            case Decoder(Rest, 0) of
                 {Elems, <<>>} ->
                     list_to_tuple(Elems);
                 {_, Tail} ->
@@ -488,6 +510,14 @@ code_for({versionstamp, _Id, _Batch}) -> ?VS80;
 code_for({versionstamp, _Id, _Batch, _Tx}) -> ?VS96;
 code_for(T) when is_tuple(T) -> ?NESTED;
 code_for(Bad) -> erlang:error({invalid_tuple_element, Bad}).
+
+-spec default_pack_options() -> pack_options().
+default_pack_options() ->
+    #{prefix => <<>>, encoder => fun encode/2}.
+
+-spec default_unpack_options() -> unpack_options().
+default_unpack_options() ->
+    #{prefix => <<>>, decoder => fun decode/2}.
 
 -ifdef(TEST).
 
