@@ -25,30 +25,20 @@ extern ErlNifResourceType* ErlFDBTransactionRes;
 extern ErlNifResourceType* ErlFDBTenantRes;
 
 
-typedef enum _ErlFDBFutureType
+typedef struct _ErlFDBFuture ErlFDBFuture;
+typedef ERL_NIF_TERM (*ErlFDBFutureGetter)(ErlNifEnv*, ErlFDBFuture*);
+struct _ErlFDBFuture
 {
-    ErlFDB_FT_NONE = 0,
-    ErlFDB_FT_VOID,
-    ErlFDB_FT_INT64,
-    ErlFDB_FT_KEY,
-    ErlFDB_FT_VALUE,
-    ErlFDB_FT_STRING_ARRAY,
-    ErlFDB_FT_KEYVALUE_ARRAY,
-    ErlFDB_FT_KEY_ARRAY
-} ErlFDBFutureType;
 
-
-typedef struct _ErlFDBFuture
-{
     FDBFuture* future;
-    ErlFDBFutureType ftype;
+    ErlFDBFutureGetter fgetter;
     ErlNifPid pid;
     ErlNifEnv* pid_env;
     ErlNifEnv* msg_env;
     ERL_NIF_TERM msg_ref;
     ErlNifMutex* lock;
     bool cancelled;
-} ErlFDBFuture;
+};
 
 
 typedef struct _ErlFDBDatabase
