@@ -34,6 +34,8 @@
 
     % Future Specific functions
     is_ready/1,
+    ready_ref/1,
+    ready_event/1,
     get/1,
     get_error/1,
     block_until_ready/1,
@@ -207,6 +209,12 @@ cancel(?IS_FUTURE = Future, Options) ->
 
 is_ready(?IS_FUTURE = Future) ->
     erlfdb_nif:future_is_ready(Future).
+
+ready_ref({erlfdb_future, MsgRef, _Res}) ->
+    MsgRef.
+
+ready_event({erlfdb_future, MsgRef, _Res}) ->
+    {MsgRef, ready}.
 
 get_error(?IS_FUTURE = Future) ->
     erlfdb_nif:future_get_error(Future).
