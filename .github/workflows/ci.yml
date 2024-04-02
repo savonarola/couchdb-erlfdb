@@ -14,7 +14,7 @@ jobs:
       matrix:
         otp-version: ['24', '25']
         fdb-version: ['7.1.43']
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
       # Set to 1 for verbose rebar3 logging
@@ -31,7 +31,6 @@ jobs:
         with:
           otp-version: ${{ matrix.otp-version }}
           rebar3-version: '3.17'
-          ImageOS: ubuntu22
       - name: Install FoundationDB
         run: |
           wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
@@ -44,7 +43,7 @@ jobs:
         run: rebar3 eunit
 
   binding_tester:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         test-name: [api, directory, directory_hca, tuple]
