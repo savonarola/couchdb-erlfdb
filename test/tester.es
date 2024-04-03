@@ -800,6 +800,14 @@ execute(_TxObj, #st{db = Db} = St, <<"TENANT_LIST">>) ->
     {Tenants, _} = lists:unzip(TenantsKV), %% TODO: verify value json?
     stack_push(St, erlfdb_tuple:pack(list_to_tuple(Tenants))),
     St;
+execute(_TxObj, #st{tenant = Tenant} = St, <<"TENANT_GET_ID">>) ->
+    case Tenant of
+        undefined -> stack_push(St, <<"NO_ACTIVE_TENANT">>);
+        _ ->
+            %% TODO: get tenant id actually
+            stack_push(St, <<"GOT_TENANT_ID">>)
+    end,
+    St;
 execute(_TxObj, _St, UnknownOp) ->
     erlang:error({unknown_op, UnknownOp}).
 

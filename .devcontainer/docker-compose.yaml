@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        ERLANG_VERSION: "24"
+        ERLANG_VERSION: "25"
 
         # This should always match the value in fdb.image
         FDB_VERSION: "7.3.35"
