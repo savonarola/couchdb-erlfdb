@@ -12,7 +12,7 @@
 
 -module(erlfdb_tenant).
 
--export([create_tenant/2, open_tenant/2, delete_tenant/2]).
+-export([create_tenant/2, open_tenant/2, delete_tenant/2, list_tenants/4]).
 
 -define(IS_DB, {erlfdb_database, _}).
 -define(TENANT_MAP_PREFIX, <<16#FF, 16#FF, "/management/tenant_map/">>).
@@ -50,8 +50,26 @@ delete_tenant(Tx, Tenant) ->
             clear(Tx, Key)
     end.
 
+list_tenants(?IS_DB = Db, From, To, Limit) ->
+    transactional(Db, fun(Tx) ->
+        list_tenants(Tx, From, To, Limit)
+    end);
+list_tenants(Tx, From, To, Limit) ->
+    FullFrom = tenant_key(From),
+    FullTo = tenant_key(To),
+    lists:map(
+        fun({K, V}) ->
+            {unprefix_tenant_key(K), V}
+        end,
+        erlfdb:range(Tx, FullFrom, FullTo, [{limit, Limit}])
+    ).
+
 check_tenant_existence(Tx, Key) ->
     wait(get(Tx, Key)).
 
 tenant_key(Tenant) ->
     <<?TENANT_MAP_PREFIX/binary, Tenant/binary>>.
+
+unprefix_tenant_key(Key) ->
+    binary:part(Key, byte_size(?TENANT_MAP_PREFIX), byte_size(Key) - byte_size(?TENANT_MAP_PREFIX)).
+
