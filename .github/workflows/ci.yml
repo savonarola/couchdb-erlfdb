@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: bash /usr/local/bin/create_cluster_file.bash
       - name: Initialize FDB database
-        run: fdbcli --exec "configure new single ssd"
+        run: fdbcli --exec "configure new single ssd tenant_mode=optional_experimental"
       - name: Execute unit tests
         run: rebar3 eunit
       - name: Execute binding test
