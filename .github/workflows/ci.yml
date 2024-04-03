@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         otp-version: ['24', '25']
-        fdb-version: ['7.1.43']
+        fdb-version: ['7.3.35']
     runs-on: ubuntu-22.04
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
@@ -47,12 +47,12 @@ jobs:
     strategy:
       matrix:
         test-name: [api, directory, directory_hca, tuple]
-        api-version: [710]
+        api-version: [730]
     container:
-      image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.1.43
+      image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.3.35
     services:
       foundationdb:
-        image: foundationdb/foundationdb:7.1.43
+        image: foundationdb/foundationdb:7.3.35
     env:
       REBAR_PROFILE: devcontainer
       # Set to 1 for verbose rebar3 logging
@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: bash /usr/local/bin/create_cluster_file.bash
       - name: Initialize FDB database
-        run: fdbcli --exec "configure new single ssd"
+        run: fdbcli --exec "configure new single ssd tenant_mode=optional_experimental"
       - name: Execute unit tests
         run: rebar3 eunit
       - name: Execute binding test

@@ -24,6 +24,7 @@
     index,
     is_db,
     is_snapshot,
+    is_tenant,
     last_version,
     pids,
 
@@ -228,6 +229,9 @@ stack_pop_tuples(St, Count) ->
 get_transaction(TxName) ->
     get({'$erlfdb_tx', TxName}).
 
+tenant_or_db(#st{db = Db, tenant = undefined}) -> Db;
+tenant_or_db(#st{tenant = Tenant}) -> Tenant.
+
 new_transaction(#st{db = Db, tenant = Tenant}, TxName) ->
     Src =
         case Tenant of
@@ -321,6 +325,7 @@ init_run_loop(Db, Prefix) ->
         index = 0,
         is_db = undefined,
         is_snapshot = undefined,
+        is_tenant = undefined,
         last_version = 0,
         pids = [],
 
@@ -362,31 +367,39 @@ run_loop(#st{} = St) ->
 
     IsDb = has_suffix(Op, <<"_DATABASE">>),
     IsSS = has_suffix(Op, <<"_SNAPSHOT">>),
+    IsTenant = has_suffix(Op, <<"_TENANT">>),
     IsDir = has_prefix(Op, <<"DIRECTORY_">>),
 
     OpName =
         if
-            not (IsDb or IsSS) ->
-                Op;
-            true ->
-                % strip off _DATABASE/_SNAPSHOT
-                binary:part(Op, {0, size(Op) - 9})
+            IsDb -> binary:part(Op, {0, size(Op) - 9});
+            IsSS -> binary:part(Op, {0, size(Op) - 9});
+            IsTenant -> binary:part(Op, {0, size(Op) - 7});
+            true -> Op
         end,
 
     TxObj =
-        case {IsDb, IsSS} of
-            {true, false} ->
-                Db;
-            {false, false} ->
-                get_transaction(TxName);
-            {false, true} ->
-                erlfdb:snapshot(get_transaction(TxName))
+        if
+            IsDb -> Db;
+            IsSS -> erlfdb:snapshot(get_transaction(TxName));
+            IsTenant -> tenant_or_db(St);
+            true -> get_transaction(TxName)
         end,
+
+        % case {IsDb, IsSS} of
+        %     {true, false} ->
+        %         Db;
+        %     {false, false} ->
+        %         get_transaction(TxName);
+        %     {false, true} ->
+
+        % end,
 
     PreSt = St#st{
         op_tuple = OpTuple,
         is_db = IsDb,
         is_snapshot = IsSS,
+        is_tenant = IsTenant,
         is_directory_op = IsDir
     },
 
@@ -781,6 +794,20 @@ execute(_TxObj, #st{db = Db} = St, <<"TENANT_SET_ACTIVE">>) ->
     St#st{tenant = Result};
 execute(_TxObj, St, <<"TENANT_CLEAR_ACTIVE">>) ->
     St#st{tenant = undefined};
+execute(_TxObj, #st{db = Db} = St, <<"TENANT_LIST">>) ->
+    [Start, End, Limit] = stack_pop(St, 3),
+    TenantsKV = erlfdb_tenant:list_tenants(Db, Start, End, Limit),
+    {Tenants, _} = lists:unzip(TenantsKV), %% TODO: verify value json?
+    stack_push(St, erlfdb_tuple:pack(list_to_tuple(Tenants))),
+    St;
+execute(_TxObj, #st{tenant = Tenant} = St, <<"TENANT_GET_ID">>) ->
+    case Tenant of
+        undefined -> stack_push(St, <<"NO_ACTIVE_TENANT">>);
+        _ ->
+            %% TODO: get tenant id actually
+            stack_push(St, <<"GOT_TENANT_ID">>)
+    end,
+    St;
 execute(_TxObj, _St, UnknownOp) ->
     erlang:error({unknown_op, UnknownOp}).
 

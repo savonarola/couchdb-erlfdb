@@ -12,10 +12,11 @@
 
 -module(erlfdb_tenant).
 
--export([create_tenant/2, open_tenant/2, delete_tenant/2]).
+-export([create_tenant/2, open_tenant/2, delete_tenant/2, list_tenants/4]).
 
 -define(IS_DB, {erlfdb_database, _}).
 -define(TENANT_MAP_PREFIX, <<16#FF, 16#FF, "/management/tenant_map/">>).
+-define(MAX_LIMIT, 2147483647).
 
 -import(erlfdb, [get/2, clear/2, set/3, wait/1, transactional/2, set_option/2]).
 
@@ -50,8 +51,59 @@ delete_tenant(Tx, Tenant) ->
             clear(Tx, Key)
     end.
 
+list_tenants(Db, From, To, Limit) ->
+    case is_selector(From) andalso is_selector(To) of
+        true ->
+            do_list_tenants(Db, From, To, Limit);
+        false ->
+            []
+    end.
+
+do_list_tenants(?IS_DB = Db, From, To, Limit) ->
+    transactional(Db, fun(Tx) ->
+        list_tenants(Tx, From, To, Limit)
+    end);
+do_list_tenants(Tx, From, To, Limit) ->
+    FullFrom = tenant_selector(From),
+    FullTo = tenant_selector(To),
+    lists:map(
+        fun({K, V}) ->
+            {unprefix_tenant_key(K), V}
+        end,
+        erlfdb:get_range(Tx, FullFrom, FullTo, [{limit, clamp_limit(Limit)}])
+    ).
+
 check_tenant_existence(Tx, Key) ->
     wait(get(Tx, Key)).
 
 tenant_key(Tenant) ->
     <<?TENANT_MAP_PREFIX/binary, Tenant/binary>>.
+
+is_selector(Key) when is_binary(Key) ->
+    true;
+is_selector({Key, Modifier}) when is_binary(Key) andalso is_atom(Modifier) ->
+    true;
+is_selector({Key, Modifier, Offset}) when
+    is_binary(Key) andalso is_atom(Modifier) andalso is_integer(Offset)
+-> true;
+is_selector(_) ->
+    false.
+
+tenant_selector(Key) when is_binary(Key) ->
+    tenant_key(Key);
+tenant_selector({Key, Modifier}) when is_binary(Key) andalso is_atom(Modifier) ->
+    {tenant_key(Key), Modifier};
+tenant_selector({Key, Modifier, Offset}) when
+    is_binary(Key) andalso is_atom(Modifier) andalso is_integer(Offset)
+->
+    {tenant_key(Key), Modifier, Offset}.
+
+clamp_limit(Limit) when is_integer(Limit) andalso Limit < 0 ->
+    0;
+clamp_limit(Limit) when is_integer(Limit) andalso Limit > ?MAX_LIMIT ->
+    ?MAX_LIMIT;
+clamp_limit(Limit) when is_integer(Limit) ->
+    Limit.
+
+unprefix_tenant_key(Key) ->
+    binary:part(Key, byte_size(?TENANT_MAP_PREFIX), byte_size(Key) - byte_size(?TENANT_MAP_PREFIX)).
