@@ -794,6 +794,12 @@ execute(_TxObj, #st{db = Db} = St, <<"TENANT_SET_ACTIVE">>) ->
     St#st{tenant = Result};
 execute(_TxObj, St, <<"TENANT_CLEAR_ACTIVE">>) ->
     St#st{tenant = undefined};
+execute(_TxObj, #st{db = Db} = St, <<"TENANT_LIST">>) ->
+    [Start, End, Limit] = stack_pop(St, 3),
+    TenantsKV = erlfdb_tenant:list_tenants(Db, Start, End, Limit),
+    {Tenants, _} = lists:unzip(TenantsKV), %% TODO: verify value json?
+    stack_push(St, erlfdb_tuple:pack(list_to_tuple(Tenants))),
+    St;
 execute(_TxObj, _St, UnknownOp) ->
     erlang:error({unknown_op, UnknownOp}).
 
