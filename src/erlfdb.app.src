@@ -18,7 +18,7 @@
     {maintainers, ["Paul J. Davis"]},
     {links, [{"GitHub", "https://github.com/emqx/couchdb-erlfdb"}]},
     {env, [
-        {api_version, 710},
+        {api_version, 730},
         {network_options, []}
     ]}
 ]}.

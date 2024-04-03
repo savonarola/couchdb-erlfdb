@@ -66,7 +66,7 @@
     error_predicate/2
 ]).
 
--define(DEFAULT_API_VERSION, 710).
+-define(DEFAULT_API_VERSION, 730).
 
 -type error() :: {erlfdb_error, Code :: integer()}.
 -type future() :: {erlfdb_future, reference(), reference()}.
