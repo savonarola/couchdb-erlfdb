@@ -386,15 +386,6 @@ run_loop(#st{} = St) ->
             true -> get_transaction(TxName)
         end,
 
-        % case {IsDb, IsSS} of
-        %     {true, false} ->
-        %         Db;
-        %     {false, false} ->
-        %         get_transaction(TxName);
-        %     {false, true} ->
-
-        % end,
-
     PreSt = St#st{
         op_tuple = OpTuple,
         is_db = IsDb,

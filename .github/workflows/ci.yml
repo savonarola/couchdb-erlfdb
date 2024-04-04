@@ -12,7 +12,7 @@ jobs:
   eunit:
     strategy:
       matrix:
-        otp-version: ['24', '25']
+        otp-version: ['25', '26']
         fdb-version: ['7.3.35']
     runs-on: ubuntu-22.04
     env:
@@ -49,7 +49,7 @@ jobs:
         test-name: [api, directory, directory_hca, tuple]
         api-version: [730]
     container:
-      image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.3.35
+      image: ghcr.io/emqx/couchdb-erlfdb:erlang-26-fdb-7.3.35
     services:
       foundationdb:
         image: foundationdb/foundationdb:7.3.35
