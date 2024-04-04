@@ -386,15 +386,6 @@ run_loop(#st{} = St) ->
             true -> get_transaction(TxName)
         end,
 
-        % case {IsDb, IsSS} of
-        %     {true, false} ->
-        %         Db;
-        %     {false, false} ->
-        %         get_transaction(TxName);
-        %     {false, true} ->
-
-        % end,
-
     PreSt = St#st{
         op_tuple = OpTuple,
         is_db = IsDb,
@@ -804,7 +795,7 @@ execute(_TxObj, #st{tenant = Tenant} = St, <<"TENANT_GET_ID">>) ->
     case Tenant of
         undefined -> stack_push(St, <<"NO_ACTIVE_TENANT">>);
         _ ->
-            %% TODO: get tenant id actually
+            _Id = erlfdb:wait(erlfdb_tenant:get_id(Tenant)),
             stack_push(St, <<"GOT_TENANT_ID">>)
     end,
     St;

@@ -12,7 +12,7 @@ jobs:
   eunit:
     strategy:
       matrix:
-        otp-version: ['24', '25']
+        otp-version: ['25', '26']
         fdb-version: ['7.3.35']
     runs-on: ubuntu-22.04
     env:
@@ -33,10 +33,12 @@ jobs:
           rebar3-version: '3.17'
       - name: Install FoundationDB
         run: |
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
-          wget https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
+          wget -q https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb
+          wget -q https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-server_${FDB_VERSION}-1_amd64.deb
           sudo dpkg -i foundationdb-clients_${FDB_VERSION}-1_amd64.deb
           sudo dpkg -i foundationdb-server_${FDB_VERSION}-1_amd64.deb
+      - name: Initialize FDB database
+        run: fdbcli --exec "configure tenant_mode=optional_experimental"
       - name: Compile
         run: rebar3 compile
       - name: EUnit tests
@@ -49,7 +51,7 @@ jobs:
         test-name: [api, directory, directory_hca, tuple]
         api-version: [730]
     container:
-      image: ghcr.io/emqx/couchdb-erlfdb:erlang-25-fdb-7.3.35
+      image: ghcr.io/emqx/couchdb-erlfdb:erlang-26-fdb-7.3.35
     services:
       foundationdb:
         image: foundationdb/foundationdb:7.3.35
