@@ -599,8 +599,16 @@ do_transaction(?IS_TX = Tx, UserFun) ->
     try
         Ret = UserFun(Tx),
         case is_read_only(Tx) andalso not has_watches(Tx) of
-            true -> ok;
-            false -> wait(commit(Tx), [{timeout, infinity}])
+            true ->
+                ct:print("Read only transaction, no watches, no commit~n"),
+                ok;
+            false ->
+                ct:print("Committing transaction~n"),
+                Future = commit(Tx),
+                ct:print("Waiting for commit future~n"),
+                Res = wait(Future, [{timeout, infinity}]),
+                ct:print("commit future result got: ~p~n", [Res]),
+                Res
         end,
         Ret
     catch
