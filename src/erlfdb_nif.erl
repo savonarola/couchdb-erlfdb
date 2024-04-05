@@ -256,7 +256,9 @@ future_get_error({erlfdb_future, _Ref, Ft}) ->
 -spec future_get(future()) -> future_result().
 future_get({erlfdb_future, _Ref, Ft}) ->
     ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
-    erlfdb_future_get(Ft).
+    Res = erlfdb_future_get(Ft),
+    ct:print("~p:~p/~p end", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    Res.
 
 -spec create_database(ClusterFilePath :: binary()) -> database().
 create_database(<<>>) ->
@@ -510,7 +512,9 @@ transaction_is_read_only({erlfdb_transaction, Tx}) ->
 -spec transaction_has_watches(transaction()) -> true | false.
 transaction_has_watches({erlfdb_transaction, Tx}) ->
     ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
-    erlfdb_transaction_has_watches(Tx).
+    Res = erlfdb_transaction_has_watches(Tx),
+    ct:print("~p:~p/~p end", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    Res.
 
 -spec transaction_get_writes_allowed(transaction()) -> true | false.
 transaction_get_writes_allowed({erlfdb_transaction, Tx}) ->
