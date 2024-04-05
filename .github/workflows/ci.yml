@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         otp-version: ['25', '26']
-        fdb-version: ['7.3.35']
+        fdb-version: ['7.3.27']
     runs-on: ubuntu-22.04
     env:
       FDB_VERSION: ${{ matrix.fdb-version }}
@@ -51,10 +51,10 @@ jobs:
         test-name: [api, directory, directory_hca, tuple]
         api-version: [730]
     container:
-      image: ghcr.io/emqx/couchdb-erlfdb:erlang-26-fdb-7.3.35
+      image: ghcr.io/emqx/couchdb-erlfdb:erlang-26-fdb-7.3.27
     services:
       foundationdb:
-        image: foundationdb/foundationdb:7.3.35
+        image: foundationdb/foundationdb:7.3.27
     env:
       REBAR_PROFILE: devcontainer
       # Set to 1 for verbose rebar3 logging

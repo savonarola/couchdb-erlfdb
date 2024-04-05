@@ -21,7 +21,7 @@ jobs:
             pip_flags: ''
           - version: 26
             pip_install_flags: '--break-system-packages'
-        fdb-version: ['7.3.35']
+        fdb-version: ['7.3.27']
 
     steps:
       - uses: actions/checkout@v4
