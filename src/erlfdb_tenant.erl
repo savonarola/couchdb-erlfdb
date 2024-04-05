@@ -15,7 +15,7 @@
 -export([create_tenant/2, open_tenant/2, delete_tenant/2]).
 
 -define(IS_DB, {erlfdb_database, _}).
--define(TENANT_MAP_PREFIX, <<16#FF, 16#FF, "/management/tenant_map/">>).
+-define(TENANT_MAP_PREFIX, <<16#FF, 16#FF, "/management/tenant/map/">>).
 
 -import(erlfdb, [get/2, clear/2, set/3, wait/1, transactional/2, set_option/2]).
 
