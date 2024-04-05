@@ -13,7 +13,7 @@ if [ "$#" -ne 3 ]; then
     usage
 fi
 
-FDB_VERSION="7.1.43"
+FDB_VERSION="7.3.27"
 TYPE="${1}"
 OUTPUT="${2}"
 

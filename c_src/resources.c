@@ -25,7 +25,7 @@ erlfdb_init_resources(ErlNifEnv* env)
 
     ErlFDBFutureRes = enif_open_resource_type(
             env,
-            NULL,
+            "erlfdb_nif",
             "erlfdb_future",
             erlfdb_future_dtor,
             ERL_NIF_RT_CREATE,
@@ -37,7 +37,7 @@ erlfdb_init_resources(ErlNifEnv* env)
 
     ErlFDBDatabaseRes = enif_open_resource_type(
             env,
-            NULL,
+            "erlfdb_nif",
             "erlfdb_database",
             erlfdb_database_dtor,
             ERL_NIF_RT_CREATE,
@@ -49,7 +49,7 @@ erlfdb_init_resources(ErlNifEnv* env)
 
     ErlFDBTransactionRes = enif_open_resource_type(
             env,
-            NULL,
+            "erlfdb_nif",
             "erlfdb_transaction",
             erlfdb_transaction_dtor,
             ERL_NIF_RT_CREATE,
@@ -61,7 +61,7 @@ erlfdb_init_resources(ErlNifEnv* env)
 
     ErlFDBTenantRes = enif_open_resource_type(
             env,
-            NULL,
+            "erlfdb_nif",
             "erlfdb_tenant",
             erlfdb_tenant_dtor,
             ERL_NIF_RT_CREATE,
