@@ -230,26 +230,32 @@ ohai() ->
 
 -spec get_max_api_version() -> {ok, integer()}.
 get_max_api_version() ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_get_max_api_version().
 
 -spec future_cancel(future()) -> ok.
 future_cancel({erlfdb_future, _Ref, Ft}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_future_cancel(Ft).
 
 -spec future_silence(future()) -> ok.
 future_silence({erlfdb_future, _Ref, Ft}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_future_silence(Ft).
 
 -spec future_is_ready(future()) -> boolean().
 future_is_ready({erlfdb_future, _Ref, Ft}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_future_is_ready(Ft).
 
 -spec future_get_error(future()) -> error().
 future_get_error({erlfdb_future, _Ref, Ft}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_future_get_error(Ft).
 
 -spec future_get(future()) -> future_result().
 future_get({erlfdb_future, _Ref, Ft}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_future_get(Ft).
 
 -spec create_database(ClusterFilePath :: binary()) -> database().
@@ -266,6 +272,7 @@ create_database(ClusterFilePath) ->
             _ ->
                 <<ClusterFilePath/binary, 0>>
         end,
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_create_database(NifPath).
 
 -spec database_set_option(database(), Option :: database_option()) -> ok.
@@ -280,18 +287,22 @@ database_set_option(Database, Option) ->
 database_set_option({erlfdb_database, Db}, Opt, Val) ->
     BinVal = option_val_to_binary(Val),
     OptVal = erlfdb_nif_option:to_database_option(Opt),
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_database_set_option(Db, OptVal, BinVal).
 
 -spec database_open_tenant(database(), binary()) -> tenant().
 database_open_tenant({erlfdb_database, Db}, Name) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_database_open_tenant(Db, Name).
 
 -spec database_create_transaction(database()) -> transaction().
 database_create_transaction({erlfdb_database, Db}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_database_create_transaction(Db).
 
 -spec tenant_create_transaction(tenant()) -> transaction().
 tenant_create_transaction({erlfdb_tenant, Db}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_tenant_create_transaction(Db).
 
 -spec transaction_set_option(transaction(), Option :: transaction_option()) -> ok.
@@ -306,19 +317,23 @@ transaction_set_option(Transaction, Option) ->
 transaction_set_option({erlfdb_transaction, Tx}, Opt, Val) ->
     BinVal = option_val_to_binary(Val),
     OptVal = erlfdb_nif_option:to_transaction_option(Opt),
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_set_option(Tx, OptVal, BinVal).
 
 -spec transaction_set_read_version(transaction(), Version :: integer()) -> ok.
 transaction_set_read_version({erlfdb_transaction, Tx}, Version) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_set_read_version(Tx, Version).
 
 -spec transaction_get_read_version(transaction()) -> future().
 transaction_get_read_version({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_read_version(Tx).
 
 -spec transaction_get(transaction(), Key :: binary(), Snapshot :: boolean()) ->
     future().
 transaction_get({erlfdb_transaction, Tx}, Key, Snapshot) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get(Tx, Key, Snapshot).
 
 -spec transaction_get_estimated_range_size(
@@ -327,6 +342,7 @@ transaction_get({erlfdb_transaction, Tx}, Key, Snapshot) ->
     EndKey :: binary()
 ) -> future().
 transaction_get_estimated_range_size({erlfdb_transaction, Tx}, StartKey, EndKey) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_estimated_range_size(Tx, StartKey, EndKey).
 
 -spec transaction_get_range_split_points(
@@ -334,6 +350,7 @@ transaction_get_estimated_range_size({erlfdb_transaction, Tx}, StartKey, EndKey)
 ) ->
     future().
 transaction_get_range_split_points({erlfdb_transaction, Tx}, BeginKey, EndKey, ChunkSize) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_range_split_points(Tx, BeginKey, EndKey, ChunkSize).
 
 -spec transaction_get_key(
@@ -342,11 +359,13 @@ transaction_get_range_split_points({erlfdb_transaction, Tx}, BeginKey, EndKey, C
     Snapshot :: boolean()
 ) -> future().
 transaction_get_key({erlfdb_transaction, Tx}, KeySelector, Snapshot) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_key(Tx, KeySelector, Snapshot).
 
 -spec transaction_get_addresses_for_key(transaction(), Key :: binary()) ->
     future().
 transaction_get_addresses_for_key({erlfdb_transaction, Tx}, Key) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_addresses_for_key(Tx, Key).
 
 -spec transaction_get_range(
@@ -355,11 +374,11 @@ transaction_get_addresses_for_key({erlfdb_transaction, Tx}, Key) ->
     EndKeySelector :: key_selector(),
     Limit :: non_neg_integer(),
     TargetBytes :: non_neg_integer(),
-    StreamingMode :: streaming_mode(),
-    Iteration :: non_neg_integer(),
-    Snapshot :: boolean(),
-    Reverse :: integer()
-) -> future().
+        StreamingMode :: streaming_mode(),
+        Iteration :: non_neg_integer(),
+        Snapshot :: boolean(),
+        Reverse :: integer()
+    ) -> future().
 transaction_get_range(
     {erlfdb_transaction, Tx},
     StartKeySelector,
@@ -371,7 +390,9 @@ transaction_get_range(
     Snapshot,
     Reverse
 ) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     StreamingModeVal = erlfdb_nif_option:to_stream_mode(StreamingMode),
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_range(
         Tx,
         StartKeySelector,
@@ -386,10 +407,12 @@ transaction_get_range(
 
 -spec transaction_set(transaction(), Key :: binary(), Val :: binary()) -> ok.
 transaction_set({erlfdb_transaction, Tx}, Key, Val) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_set(Tx, Key, Val).
 
 -spec transaction_clear(transaction(), Key :: binary()) -> ok.
 transaction_clear({erlfdb_transaction, Tx}, Key) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_clear(Tx, Key).
 
 -spec transaction_clear_range(
@@ -398,6 +421,7 @@ transaction_clear({erlfdb_transaction, Tx}, Key) ->
     EndKey :: binary()
 ) -> ok.
 transaction_clear_range({erlfdb_transaction, Tx}, StartKey, EndKey) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_clear_range(Tx, StartKey, EndKey).
 
 -spec transaction_atomic_op(
@@ -415,34 +439,42 @@ transaction_atomic_op({erlfdb_transaction, Tx}, Key, Operand, OpName) ->
                 <<Int:64/little>>
         end,
     OpValue = erlfdb_nif_option:to_mutation_type(OpName),
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_atomic_op(Tx, Key, BinOperand, OpValue).
 
 -spec transaction_commit(transaction()) -> future().
 transaction_commit({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_commit(Tx).
 
 -spec transaction_get_committed_version(transaction()) -> integer().
 transaction_get_committed_version({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_committed_version(Tx).
 
 -spec transaction_get_versionstamp(transaction()) -> future().
 transaction_get_versionstamp({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_versionstamp(Tx).
 
 -spec transaction_watch(transaction(), Key :: binary()) -> future().
 transaction_watch({erlfdb_transaction, Tx}, Key) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_watch(Tx, Key).
 
 -spec transaction_on_error(transaction(), Error :: integer()) -> future().
 transaction_on_error({erlfdb_transaction, Tx}, Error) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_on_error(Tx, Error).
 
 -spec transaction_reset(transaction()) -> ok.
 transaction_reset({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_reset(Tx).
 
 -spec transaction_cancel(transaction()) -> ok.
 transaction_cancel({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_cancel(Tx).
 
 -spec transaction_add_conflict_range(
@@ -457,35 +489,43 @@ transaction_add_conflict_range(
     EndKey,
     ConflictType
 ) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_add_conflict_range(Tx, StartKey, EndKey, ConflictType).
 
 -spec transaction_get_approximate_size(transaction()) -> non_neg_integer().
 transaction_get_approximate_size({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_approximate_size(Tx).
 
 -spec transaction_get_next_tx_id(transaction()) -> non_neg_integer().
 transaction_get_next_tx_id({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_next_tx_id(Tx).
 
 -spec transaction_is_read_only(transaction()) -> true | false.
 transaction_is_read_only({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_is_read_only(Tx).
 
 -spec transaction_has_watches(transaction()) -> true | false.
 transaction_has_watches({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_has_watches(Tx).
 
 -spec transaction_get_writes_allowed(transaction()) -> true | false.
 transaction_get_writes_allowed({erlfdb_transaction, Tx}) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_transaction_get_writes_allowed(Tx).
 
 -spec get_error(integer()) -> binary().
 get_error(Error) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_get_error(Error).
 
 -spec error_predicate(Predicate :: error_predicate(), Error :: integer()) ->
     boolean().
 error_predicate(Predicate, Error) ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_error_predicate(Predicate, Error).
 
 -spec option_val_to_binary(binary() | integer()) -> binary().
@@ -509,6 +549,7 @@ init() ->
         Status /= ok ->
             Status;
         true ->
+            ct:print("~p:~p/~p", [?MODULE, can_initialize, 0]),
             true = erlfdb_can_initialize(),
 
             Vsn =
@@ -538,6 +579,7 @@ init() ->
                 Opts
             ),
 
+            ct:print("~p:~p/~p", [?MODULE, setup_network, 0]),
             ok = erlfdb_setup_network()
     end.
 
@@ -545,6 +587,7 @@ init() ->
 
 -spec select_api_version(Version :: pos_integer()) -> ok.
 select_api_version(Version) when is_integer(Version), Version > 0 ->
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_select_api_version(Version).
 
 -spec network_set_option(Option :: network_option(), Value :: option_value()) ->
@@ -552,6 +595,7 @@ select_api_version(Version) when is_integer(Version), Version > 0 ->
 network_set_option(Name, Value) ->
     Option = erlfdb_nif_option:to_network_option(Name),
     BinVal = option_val_to_binary(Value),
+    ct:print("~p:~p/~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     erlfdb_network_set_option(Option, BinVal).
 
 % Sentinel Check

@@ -26,6 +26,7 @@ create_tenant(?IS_DB = Db, Tenant) ->
 create_tenant(Tx, Tenant) ->
     set_option(Tx, special_key_space_enable_writes),
     Key = tenant_key(Tenant),
+    ct:print("create_tenant Key: ~p~n", [Key]),
     case check_tenant_existence(Tx, Key) of
         not_found ->
             set(Tx, Key, <<>>);
