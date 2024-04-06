@@ -75,24 +75,13 @@ static void
 erlfdb_future_cb(FDBFuture* fdb_future, void* data)
 {
     ErlFDBFuture* future = (ErlFDBFuture*) data;
-    ErlNifEnv* caller;
     ERL_NIF_TERM msg;
-
-    // FoundationDB callbacks can fire from the thread
-    // that created them. Check if we were actually
-    // submitted to the network thread or not so that
-    // we pass the correct environment to enif_send
-    if(enif_thread_type() == ERL_NIF_THR_UNDEFINED) {
-        caller = NULL;
-    } else {
-        caller = future->pid_env;
-    }
 
     enif_mutex_lock(future->lock);
 
     if(!future->cancelled) {
         msg = T2(future->msg_env, future->msg_ref, ATOM_ready);
-        enif_send(caller, &(future->pid), future->msg_env, msg);
+        enif_send(NULL, &(future->pid), future->msg_env, msg);
     }
 
     enif_mutex_unlock(future->lock);
@@ -119,7 +108,6 @@ erlfdb_create_future(ErlNifEnv* env, FDBFuture* future, ErlFDBFutureGetter gette
     f->future = future;
     f->fgetter = getter;
     enif_self(env, &(f->pid));
-    f->pid_env = env;
     f->msg_env = enif_alloc_env();
     f->msg_ref = enif_make_copy(f->msg_env, ref);
     f->lock = enif_mutex_create("fdb:future_lock");
