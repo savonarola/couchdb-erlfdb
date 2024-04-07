@@ -76,15 +76,18 @@ erlfdb_future_cb(FDBFuture* fdb_future, void* data)
 {
     ErlFDBFuture* future = (ErlFDBFuture*) data;
     ERL_NIF_TERM msg;
+    bool cancelled;
+
 
     enif_mutex_lock(future->lock);
+    cancelled = future->cancelled;
+    enif_mutex_unlock(future->lock);
 
-    if(!future->cancelled) {
+    if(!cancelled) {
         msg = T2(future->msg_env, future->msg_ref, ATOM_ready);
         enif_send(NULL, &(future->pid), future->msg_env, msg);
     }
 
-    enif_mutex_unlock(future->lock);
 
     // We're now done with this future which means we need
     // to release our handle to it. See erlfdb_create_future
@@ -557,9 +560,10 @@ erlfdb_future_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     enif_mutex_lock(future->lock);
 
     future->cancelled = true;
+    enif_mutex_unlock(future->lock);
+
     fdb_future_cancel(future->future);
 
-    enif_mutex_unlock(future->lock);
 
     return ATOM_ok;
 }
