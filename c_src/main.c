@@ -75,27 +75,19 @@ static void
 erlfdb_future_cb(FDBFuture* fdb_future, void* data)
 {
     ErlFDBFuture* future = (ErlFDBFuture*) data;
-    ErlNifEnv* caller;
     ERL_NIF_TERM msg;
+    bool cancelled;
 
-    // FoundationDB callbacks can fire from the thread
-    // that created them. Check if we were actually
-    // submitted to the network thread or not so that
-    // we pass the correct environment to enif_send
-    if(enif_thread_type() == ERL_NIF_THR_UNDEFINED) {
-        caller = NULL;
-    } else {
-        caller = future->pid_env;
-    }
 
     enif_mutex_lock(future->lock);
+    cancelled = future->cancelled;
+    enif_mutex_unlock(future->lock);
 
-    if(!future->cancelled) {
+    if(!cancelled) {
         msg = T2(future->msg_env, future->msg_ref, ATOM_ready);
-        enif_send(caller, &(future->pid), future->msg_env, msg);
+        enif_send(NULL, &(future->pid), future->msg_env, msg);
     }
 
-    enif_mutex_unlock(future->lock);
 
     // We're now done with this future which means we need
     // to release our handle to it. See erlfdb_create_future
@@ -119,7 +111,6 @@ erlfdb_create_future(ErlNifEnv* env, FDBFuture* future, ErlFDBFutureGetter gette
     f->future = future;
     f->fgetter = getter;
     enif_self(env, &(f->pid));
-    f->pid_env = env;
     f->msg_env = enif_alloc_env();
     f->msg_ref = enif_make_copy(f->msg_env, ref);
     f->lock = enif_mutex_create("fdb:future_lock");
@@ -569,9 +560,10 @@ erlfdb_future_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     enif_mutex_lock(future->lock);
 
     future->cancelled = true;
+    enif_mutex_unlock(future->lock);
+
     fdb_future_cancel(future->future);
 
-    enif_mutex_unlock(future->lock);
 
     return ATOM_ok;
 }

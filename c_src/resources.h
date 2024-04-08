@@ -33,7 +33,6 @@ struct _ErlFDBFuture
     FDBFuture* future;
     ErlFDBFutureGetter fgetter;
     ErlNifPid pid;
-    ErlNifEnv* pid_env;
     ErlNifEnv* msg_env;
     ERL_NIF_TERM msg_ref;
     ErlNifMutex* lock;
