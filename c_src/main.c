@@ -78,16 +78,16 @@ erlfdb_future_cb(FDBFuture* fdb_future, void* data)
     ERL_NIF_TERM msg;
     bool cancelled;
 
-
-    enif_mutex_lock(future->lock);
+    enif_mutex_lock(future->cancel_lock);
     cancelled = future->cancelled;
-    enif_mutex_unlock(future->lock);
+    enif_mutex_unlock(future->cancel_lock);
 
     if(!cancelled) {
+        enif_mutex_lock(future->msg_lock);
         msg = T2(future->msg_env, future->msg_ref, ATOM_ready);
         enif_send(NULL, &(future->pid), future->msg_env, msg);
+        enif_mutex_unlock(future->msg_lock);
     }
-
 
     // We're now done with this future which means we need
     // to release our handle to it. See erlfdb_create_future
@@ -107,14 +107,19 @@ erlfdb_create_future(ErlNifEnv* env, FDBFuture* future, ErlFDBFutureGetter gette
     ERL_NIF_TERM ret;
     fdb_error_t err;
 
+    // TODO: check results of each operation.
+    // TODO: return error if any operation fails and clean previously allocated resources.
+
     f = enif_alloc_resource(ErlFDBFutureRes, sizeof(ErlFDBFuture));
     f->future = future;
     f->fgetter = getter;
     enif_self(env, &(f->pid));
     f->msg_env = enif_alloc_env();
     f->msg_ref = enif_make_copy(f->msg_env, ref);
-    f->lock = enif_mutex_create("fdb:future_lock");
+    f->msg_lock = enif_mutex_create("fdb:future_msg_lock");
+
     f->cancelled = false;
+    f->cancel_lock = enif_mutex_create("fdb:future_cancel_lock");
 
     // This resource reference counting dance is a bit
     // awkward as erlfdb_future_cb can be called both
@@ -557,10 +562,10 @@ erlfdb_future_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
     future = (ErlFDBFuture*) res;
 
-    enif_mutex_lock(future->lock);
+    enif_mutex_lock(future->cancel_lock);
 
     future->cancelled = true;
-    enif_mutex_unlock(future->lock);
+    enif_mutex_unlock(future->cancel_lock);
 
     fdb_future_cancel(future->future);
 
@@ -589,11 +594,11 @@ erlfdb_future_silence(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
     future = (ErlFDBFuture*) res;
 
-    enif_mutex_lock(future->lock);
+    enif_mutex_lock(future->cancel_lock);
 
     future->cancelled = true;
 
-    enif_mutex_unlock(future->lock);
+    enif_mutex_unlock(future->cancel_lock);
 
     return ATOM_ok;
 }

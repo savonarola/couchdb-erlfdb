@@ -35,8 +35,10 @@ struct _ErlFDBFuture
     ErlNifPid pid;
     ErlNifEnv* msg_env;
     ERL_NIF_TERM msg_ref;
-    ErlNifMutex* lock;
+    ErlNifMutex* msg_lock;
+
     bool cancelled;
+    ErlNifMutex* cancel_lock;
 };
 
 
