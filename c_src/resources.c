@@ -87,8 +87,12 @@ erlfdb_future_dtor(ErlNifEnv* env, void* obj)
         enif_free_env(f->msg_env);
     }
 
-    if(f->lock != NULL) {
-        enif_mutex_destroy(f->lock);
+    if(f->cancel_lock != NULL) {
+        enif_mutex_destroy(f->cancel_lock);
+    }
+
+    if(f->msg_lock != NULL) {
+        enif_mutex_destroy(f->msg_lock);
     }
 }
 
