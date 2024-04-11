@@ -16,6 +16,7 @@
 #include <stdbool.h>
 
 #include "erl_nif.h"
+#include "erl_driver.h"
 #include "fdb.h"
 
 
@@ -36,7 +37,7 @@ struct _ErlFDBFuture
     ErlNifEnv* msg_env;
     ERL_NIF_TERM msg_ref;
     ErlNifMutex* msg_lock;
-
+    ErlDrvTSDKey future_proc_env_key;
     bool cancelled;
     ErlNifMutex* cancel_lock;
 };
